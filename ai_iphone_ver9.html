@@ -1,0 +1,3457 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <!-- iPhone最適化: ズーム防止＆セーフエリア(ノッチ・ホームバー)対応 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+  <!-- iOS「ホーム画面に追加」(PWA) メタタグ -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Prompt Studio">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#09090b" id="theme-color-meta">
+
+  <title>Prompt Studio — AI画像プロンプトジェネレーター</title>
+
+  <!-- Google Fonts: Inter & Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans JP"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          boxShadow: {
+            'ios-top': '0 -10px 32px rgba(0, 0, 0, 0.32)',
+            'ios-card': '0 4px 20px rgba(0, 0, 0, 0.08)',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* iOSネイティブ風のタッチ挙動とセーフエリア対応 */
+    html, body {
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+    }
+
+    /* 横スクロールバー非表示 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* セーフエリア余白 */
+    .pt-safe {
+      padding-top: max(0.75rem, env(safe-area-inset-top));
+    }
+    .pb-safe {
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+
+    /* スムーズなアコーディオン・フォーム展開 */
+    .collapsible {
+      transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+    .collapsible.open {
+      max-height: 1200px;
+      opacity: 1;
+    }
+    .collapsible-lg {
+      transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.24s ease;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+    .collapsible-lg.open {
+      max-height: 2400px;
+      opacity: 1;
+    }
+
+    /* ボトムシートアニメーション */
+    .sheet-backdrop {
+      transition: opacity 0.25s ease;
+    }
+    .sheet-panel {
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+
+<body class="bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans antialiased selection:bg-blue-500/30 transition-colors duration-200">
+
+  <!-- アプリ全体コンテナ -->
+  <div class="min-h-screen max-w-lg mx-auto relative flex flex-col bg-zinc-50 dark:bg-zinc-950 shadow-2xl shadow-black/10 dark:shadow-black/50">
+
+    <!-- =========================================================
+         ヘッダー（スティッキー・グラスモーフィズム）
+         ========================================================= -->
+    <header class="sticky top-0 z-30 pt-safe pb-3 px-4 bg-zinc-50/85 dark:bg-zinc-950/85 backdrop-blur-xl border-b border-zinc-200/70 dark:border-zinc-800/70">
+      <div class="flex items-center justify-between gap-2">
+        <!-- ロゴ＆タイトル -->
+        <div class="flex items-center gap-2.5">
+          <div id="app-logo-badge" class="w-9 h-9 rounded-2xl flex items-center justify-center text-white shadow-sm transition-all duration-300 bg-gradient-to-br from-blue-500 to-violet-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-base font-bold tracking-tight leading-tight">Prompt Studio</h1>
+            <p class="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">AI画像プロンプト作成</p>
+          </div>
+        </div>
+
+        <!-- ヘッダーアクションボタン -->
+        <div class="flex items-center gap-1.5">
+          <!-- ランダム組み合わせ -->
+          <button type="button" id="btn-random" title="ランダムに組み合わせる" aria-label="ランダム生成"
+            class="p-2.5 rounded-xl bg-zinc-200/70 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-90 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+            </svg>
+          </button>
+
+          <!-- 全リセット -->
+          <button type="button" id="btn-reset" title="すべてリセット" aria-label="すべてリセット"
+            class="p-2.5 rounded-xl bg-zinc-200/70 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-90 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+          </button>
+
+          <!-- 履歴・お気に入り -->
+          <button type="button" id="btn-history" title="履歴・お気に入り" aria-label="履歴とお気に入り"
+            class="relative p-2.5 rounded-xl bg-zinc-200/70 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-90 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="history-badge" class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white bg-blue-500 flex items-center justify-center shadow">0</span>
+          </button>
+
+          <!-- テーマ切替 -->
+          <button type="button" id="btn-theme" title="ダーク/ライト切替" aria-label="テーマ切替"
+            class="p-2.5 rounded-xl bg-zinc-200/70 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-90 transition-all">
+            <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+            </svg>
+            <svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 対象AI セグメントコントロール -->
+      <div class="mt-3 p-1 rounded-2xl bg-zinc-200/80 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 grid grid-cols-3 gap-1" role="tablist" aria-label="対象AI選択">
+        <button type="button" data-ai="gemini" role="tab" aria-selected="true"
+          class="ai-tab py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-95">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          <span>Gemini</span>
+        </button>
+        <button type="button" data-ai="chatgpt" role="tab" aria-selected="false"
+          class="ai-tab py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-95">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>ChatGPT</span>
+        </button>
+        <button type="button" data-ai="grok" role="tab" aria-selected="false"
+          class="ai-tab py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-95">
+          <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+          <span>Grok</span>
+        </button>
+      </div>
+
+      <!-- AIヒント＆言語モード切替（コンパクト1行配置） -->
+      <div class="mt-2.5 flex items-center justify-between gap-2 px-0.5">
+        <p id="ai-hint" class="text-[11px] text-zinc-500 dark:text-zinc-400 truncate flex-1">
+          ✨ 自然な情景描写で光と構図を滑らかに伝えます
+        </p>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <!-- 事前ポリシーチェック ON/OFF スイッチ -->
+          <button type="button" id="btn-safety-toggle" role="switch" aria-checked="true" title="NGワード事前チェックのON/OFF"
+            class="px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+            <span id="safety-toggle-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>安全チェック</span>
+          </button>
+
+          <div class="p-0.5 rounded-lg bg-zinc-200/80 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex shrink-0">
+            <button type="button" data-lang="en" class="lang-btn px-2.5 py-1 rounded-md text-[11px] font-bold transition-all active:scale-95">
+              英語
+            </button>
+            <button type="button" data-lang="ja" class="lang-btn px-2.5 py-1 rounded-md text-[11px] font-bold transition-all active:scale-95">
+              日本語
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- =========================================================
+         メインコンテンツ領域
+         ========================================================= -->
+    <main class="flex-1 px-4 pt-4 pb-60 space-y-4">
+
+      <!-- 1. 被写体入力＆アスペクト比カード -->
+      <section class="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-4 shadow-ios-card space-y-3.5">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label for="subject-input" class="text-sm font-bold flex items-center gap-1.5">
+              <span>描きたい被写体・シーン</span>
+              <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">メイン</span>
+            </label>
+            <button type="button" id="btn-clear-subject"
+              class="hidden text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 px-2 py-0.5 rounded-lg active:scale-95 transition">
+              クリア
+            </button>
+          </div>
+
+          <!-- iOS自動ズーム防止のため text-base (16px) -->
+          <textarea id="subject-input" rows="2"
+            placeholder="例：雨上がりの渋谷の路地裏で、ネオンの光を見上げる黒猫"
+            class="w-full text-base leading-relaxed rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 p-3 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition resize-none"></textarea>
+        </div>
+
+        <!-- 画像内に入れたい文字（任意・1行） -->
+        <div>
+          <label for="text-in-image" class="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5">
+            画像内に入れたい文字 <span class="font-normal text-zinc-400">（任意・看板やロゴなど）</span>
+          </label>
+          <input type="text" id="text-in-image" placeholder="例：TOKYO COFFEE"
+            class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
+        </div>
+
+        <!-- アスペクト比クイック選択 -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-semibold text-zinc-500 dark:text-zinc-400">アスペクト比</span>
+            <span id="ratio-label" class="text-[11px] text-zinc-400">指定なし</span>
+          </div>
+          <div id="ratio-container" class="grid grid-cols-3 gap-1.5">
+            <!-- JSで描画: 指定なし, 1:1, 16:9, 9:16, 4:3, 3:4 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 1.5 事前警告（NGワード検知）＆言い換え提案バナー -->
+      <section id="safety-warning-section" class="hidden rounded-2xl border overflow-hidden shadow-ios-card transition-all duration-200">
+        <button type="button" id="btn-toggle-safety-banner" aria-expanded="true"
+          class="w-full px-4 py-3 flex items-center justify-between gap-2 text-left transition active:opacity-80">
+          <div class="flex items-center gap-2 min-w-0">
+            <span id="safety-banner-icon" class="text-base shrink-0">⚠️</span>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span id="safety-banner-title" class="text-xs sm:text-sm font-bold leading-tight">ブロックされる可能性のある表現を検知</span>
+                <span id="safety-risk-badge" class="text-[10px] font-bold px-1.5 py-0.5 rounded-md">リスク高</span>
+              </div>
+              <p id="safety-ai-advice" class="text-[11px] opacity-85 mt-0.5 leading-snug"></p>
+            </div>
+          </div>
+          <svg id="safety-banner-chevron" class="w-4 h-4 shrink-0 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+
+        <div id="safety-banner-body" class="collapsible open">
+          <div id="safety-findings-list" class="px-4 pb-3.5 pt-1 space-y-2.5 border-t border-black/5 dark:border-white/10">
+            <!-- JSで描画 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 1.8 人物設定セクション（最大3人まで設定可能） -->
+      <section id="characters-section" class="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-ios-card overflow-hidden">
+        <div class="px-4 py-3 flex items-center justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800/80">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold">人物設定</span>
+            <span id="char-count-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">0/3</span>
+          </div>
+          <button type="button" id="btn-add-character-header"
+            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 transition shadow-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            <span>人物を追加</span>
+          </button>
+        </div>
+
+        <!-- 0人のときの空状態 -->
+        <div id="char-empty-state" class="px-4 py-3.5 flex items-center justify-between gap-3">
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            性別・種族・スタイル・服装・姿勢・小物を最大3人まで細かく指定できます
+          </p>
+        </div>
+
+        <!-- 1〜3人のときのタブ＆フォーム領域 -->
+        <div id="char-editor-wrap" class="hidden">
+          <div id="char-tabs-bar" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar px-3 py-2.5 bg-zinc-50/70 dark:bg-zinc-950/40 border-b border-zinc-200/80 dark:border-zinc-800" role="tablist" aria-label="人物切替タブ">
+            <!-- JSで描画 -->
+          </div>
+
+          <div id="char-active-form" class="p-4 space-y-4">
+            <!-- JSで描画 -->
+          </div>
+
+          <!-- 複数人（2人以上）の位置関係・体勢設定パネル -->
+          <div id="group-relation-panel" class="hidden border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/40 p-4 space-y-4">
+            <!-- JSで描画 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 1.9 シーン設定（背景・日時・季節/天候）セクション（折りたたみ対応） -->
+      <section id="scene-section" class="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-ios-card overflow-hidden">
+        <button type="button" id="btn-toggle-scene" aria-expanded="false"
+          class="w-full px-4 py-3.5 flex items-center justify-between gap-2 text-left active:bg-zinc-50 dark:active:bg-zinc-800/50 transition">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-sm font-bold">シーン設定</span>
+              <span class="text-[11px] text-zinc-500 dark:text-zinc-400">背景・日時・天候</span>
+              <span id="scene-count-badge" class="hidden text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white bg-blue-500">0</span>
+            </div>
+            <div id="scene-summary-badges" class="hidden mt-1.5 flex flex-wrap gap-1">
+              <!-- JSで描画 -->
+            </div>
+          </div>
+          <svg id="scene-chevron" class="w-4 h-4 text-zinc-400 shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+
+        <div id="scene-body" class="collapsible-lg">
+          <div id="scene-form-container" class="px-4 pb-4 pt-3 space-y-4 border-t border-zinc-100 dark:border-zinc-800/80">
+            <!-- JSで描画 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 選択中の全タグ サマリーエリア -->
+      <section id="selected-summary-section" class="hidden rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-3.5 shadow-ios-card">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-bold">選択中の要素</span>
+            <span id="selected-total-badge" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white bg-blue-500">0</span>
+          </div>
+          <button type="button" id="btn-clear-all-tags"
+            class="text-[11px] font-semibold text-zinc-400 hover:text-red-500 px-2 py-0.5 rounded-lg active:scale-95 transition">
+            すべて解除
+          </button>
+        </div>
+        <div id="selected-summary-chips" class="flex flex-wrap gap-1.5">
+          <!-- JSで描画 -->
+        </div>
+      </section>
+
+      <!-- 3. カテゴリー別タブ＆チップ選択＋カスタムワード追加カード -->
+      <section class="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-ios-card overflow-hidden">
+        <!-- 横スクロール可能なカテゴリータブバー -->
+        <div class="border-b border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40">
+          <div id="category-tabs" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar px-3 py-2.5" role="tablist" aria-label="カテゴリータブ">
+            <!-- JSで描画 -->
+          </div>
+        </div>
+
+        <!-- アクティブカテゴリーのパネル -->
+        <div class="p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <h2 id="active-cat-title" class="text-sm font-bold truncate">画風・スタイル</h2>
+              <button type="button" id="btn-clear-active-cat"
+                class="hidden text-[11px] font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 px-1.5 py-0.5 rounded active:scale-95 transition shrink-0">
+                選択解除
+              </button>
+            </div>
+            <button type="button" id="btn-toggle-add-word" aria-expanded="false"
+              class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-95 transition border border-zinc-200/80 dark:border-zinc-700/80">
+              <svg id="add-word-icon" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span>ワードを追加</span>
+            </button>
+          </div>
+
+          <!-- カスタムワード追加フォーム（折りたたみ展開） -->
+          <div id="add-word-form-wrap" class="collapsible">
+            <form id="add-word-form" class="mb-4 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/80 border border-dashed border-zinc-300 dark:border-zinc-700 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-zinc-700 dark:text-zinc-200">
+                  「<span id="add-word-cat-name">画風・スタイル</span>」にカスタムワードを追加
+                </span>
+              </div>
+              <div class="space-y-2">
+                <div>
+                  <label for="custom-word-ja" class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    表示名 <span class="text-red-500">*</span>
+                  </label>
+                  <input type="text" id="custom-word-ja" required placeholder="例：昭和レトロ"
+                    class="w-full text-base rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                </div>
+                <div>
+                  <label for="custom-word-en" class="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    英語プロンプト用テキスト <span class="text-zinc-400">（任意・空欄時は表示名を使用）</span>
+                  </label>
+                  <input type="text" id="custom-word-en" placeholder="例：Showa retro style"
+                    class="w-full text-base rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                </div>
+              </div>
+              <div class="flex items-center justify-end gap-2 pt-1">
+                <button type="button" id="btn-cancel-add-word"
+                  class="px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 active:scale-95 transition">
+                  キャンセル
+                </button>
+                <button type="submit" id="btn-submit-add-word"
+                  class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 transition shadow-sm">
+                  追加して選択
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- チップ一覧グリッド -->
+          <div id="active-cat-chips" class="flex flex-wrap gap-2">
+            <!-- JSで描画 -->
+          </div>
+
+          <p id="custom-word-hint" class="hidden mt-3 text-[11px] text-zinc-400 flex items-center gap-1">
+            <span>✦ 点線枠はあなたが追加したカスタムワードです（×で削除可能）</span>
+          </p>
+        </div>
+      </section>
+
+      <!-- 4. 詳細オプション（避けたい要素）アコーディオン -->
+      <section class="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-ios-card overflow-hidden">
+        <button type="button" id="btn-accordion-options" aria-expanded="false"
+          class="w-full p-4 flex items-center justify-between text-left active:bg-zinc-50 dark:active:bg-zinc-800/50 transition">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold">詳細オプション</span>
+            <span class="text-xs text-zinc-500 dark:text-zinc-400">避けたい要素（ネガティブ指示）</span>
+            <span id="options-active-dot" class="hidden w-2 h-2 rounded-full bg-blue-500"></span>
+          </div>
+          <svg id="accordion-chevron" class="w-4 h-4 text-zinc-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+
+        <div id="accordion-options-body" class="collapsible">
+          <div class="px-4 pb-4 pt-2 space-y-4 border-t border-zinc-100 dark:border-zinc-800/80">
+            <div>
+              <label for="negative-input" class="block text-xs font-semibold text-zinc-600 dark:text-zinc-300 mb-1.5">
+                避けたい要素（ネガティブ指示）
+              </label>
+              <input type="text" id="negative-input" placeholder="例：文字の崩れ、ぼやけ、透かし"
+                class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2.5 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <button type="button" data-neg="透かし・ロゴ" class="neg-chip text-[11px] px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 active:scale-95 transition">+ 透かし・ロゴ</button>
+                <button type="button" data-neg="文字の崩れ" class="neg-chip text-[11px] px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 active:scale-95 transition">+ 文字の崩れ</button>
+                <button type="button" data-neg="ぼやけ・低画質" class="neg-chip text-[11px] px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 active:scale-95 transition">+ ぼやけ・低画質</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- =========================================================
+         下部固定バー（リアルタイムプレビュー＆アクション）
+         ========================================================= -->
+    <footer class="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
+      <div class="max-w-lg mx-auto pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border-t border-zinc-200/80 dark:border-zinc-800 shadow-ios-top px-4 pt-3 pb-safe rounded-t-3xl">
+
+        <!-- プレビューヘッダー -->
+        <div class="flex items-center justify-between mb-1.5 gap-2">
+          <button type="button" id="btn-toggle-preview" class="flex items-center gap-1.5 text-xs font-bold text-zinc-600 dark:text-zinc-300 active:opacity-70 min-w-0">
+            <span id="preview-ai-badge" class="px-2 py-0.5 rounded-md text-[10px] font-bold text-white bg-blue-500 shrink-0">Gemini</span>
+            <span class="truncate">生成プロンプト</span>
+            <span id="preview-char-count" class="text-[11px] font-normal text-zinc-400 shrink-0">0文字</span>
+          </button>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" id="footer-safety-badge"
+              class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition active:scale-95">
+            </button>
+            <button type="button" id="btn-expand-preview" class="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 px-2 py-0.5 rounded-lg">
+              全文表示
+            </button>
+          </div>
+        </div>
+
+        <!-- リアルタイムプレビューボックス -->
+        <div id="prompt-preview-box" role="button" tabindex="0" aria-label="プロンプトプレビューを展開"
+          class="mb-3 p-2.5 rounded-xl bg-zinc-100/90 dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/90 text-xs sm:text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200 max-h-20 overflow-y-auto transition-all duration-200 whitespace-pre-wrap break-words font-mono cursor-pointer">
+          被写体を入力するか、カテゴリータブからタグを選んでください...
+        </div>
+
+        <!-- アクションボタン行 -->
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-save-fav" title="お気に入りに保存" aria-label="お気に入りに保存"
+            class="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-95 transition-all shrink-0 border border-zinc-200/70 dark:border-zinc-700/70">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+            </svg>
+          </button>
+
+          <button type="button" id="btn-copy"
+            class="flex-1 py-3.5 px-5 rounded-2xl font-bold text-sm sm:text-base text-white shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 bg-gradient-to-r from-blue-600 to-violet-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+            </svg>
+            <span>プロンプトをコピー</span>
+          </button>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- =========================================================
+       履歴・お気に入り ボトムシートモーダル
+       ========================================================= -->
+  <div id="history-modal" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+    <div id="history-backdrop" class="sheet-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm opacity-0"></div>
+
+    <div id="history-panel" class="sheet-panel fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white dark:bg-zinc-900 rounded-t-3xl border-t border-zinc-200 dark:border-zinc-800 shadow-2xl translate-y-full max-h-[82vh] flex flex-col">
+      <div class="w-full flex justify-center pt-3 pb-1">
+        <div class="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+      </div>
+
+      <div class="px-5 py-2 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800">
+        <h2 class="text-base font-bold">履歴・お気に入り</h2>
+        <button type="button" id="btn-close-history" class="p-2 -mr-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 active:scale-90 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-5 pt-3 pb-2">
+        <div class="p-1 rounded-xl bg-zinc-100 dark:bg-zinc-950 grid grid-cols-2 gap-1">
+          <button type="button" data-htab="history" class="htab-btn py-1.5 rounded-lg text-xs font-bold transition">
+            コピー履歴
+          </button>
+          <button type="button" data-htab="favorites" class="htab-btn py-1.5 rounded-lg text-xs font-bold transition">
+            ★ お気に入り
+          </button>
+        </div>
+      </div>
+
+      <div id="history-list" class="flex-1 overflow-y-auto px-5 py-2 space-y-3 pb-safe">
+        <!-- JSで描画 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       カスタムラベル追加 ボトムシートモーダル（人物設定・シーン設定 共通）
+       ========================================================= -->
+  <div id="custom-label-modal" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+    <div id="custom-label-backdrop" class="sheet-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm opacity-0"></div>
+
+    <div id="custom-label-panel" class="sheet-panel fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white dark:bg-zinc-900 rounded-t-3xl border-t border-zinc-200 dark:border-zinc-800 shadow-2xl translate-y-full flex flex-col">
+      <div class="w-full flex justify-center pt-3 pb-1">
+        <div class="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+      </div>
+
+      <div class="px-5 py-2.5 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800">
+        <h2 id="custom-label-modal-title" class="text-base font-bold">ラベルを追加</h2>
+        <button type="button" id="btn-close-custom-label" class="p-2 -mr-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 active:scale-90 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form id="custom-label-form" class="px-5 pt-4 pb-safe space-y-3.5">
+        <div>
+          <label for="modal-custom-ja" class="block text-xs font-semibold text-zinc-600 dark:text-zinc-300 mb-1.5">
+            表示名 <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="modal-custom-ja" required placeholder="例：ゴスロリドレス"
+            class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-700 px-3.5 py-2.5 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+        </div>
+        <div>
+          <label for="modal-custom-en" class="block text-xs font-semibold text-zinc-600 dark:text-zinc-300 mb-1.5">
+            英語プロンプト用テキスト <span class="font-normal text-zinc-400">（任意・空欄時は表示名を使用）</span>
+          </label>
+          <input type="text" id="modal-custom-en" placeholder="例：Gothic Lolita dress"
+            class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-700 px-3.5 py-2.5 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+        </div>
+        <p class="text-[11px] text-zinc-400 leading-relaxed">
+          ✦ 追加したラベルは端末に保存され、人物1〜3や次回以降もワンタップで選択できます（×で削除可能）。
+        </p>
+        <div class="flex items-center gap-2 pt-1 pb-2">
+          <button type="button" id="btn-cancel-custom-label"
+            class="flex-1 py-3 px-4 rounded-2xl text-sm font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 active:scale-95 transition">
+            キャンセル
+          </button>
+          <button type="submit" id="btn-submit-custom-label"
+            class="flex-[1.6] py-3 px-4 rounded-2xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 transition shadow-md">
+            追加して選択
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       iOS風 トースト通知
+       ========================================================= -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] pointer-events-none opacity-0 -translate-y-4 transition-all duration-300 pt-safe">
+    <div class="px-4 py-2.5 rounded-full bg-zinc-900/95 dark:bg-zinc-100/95 text-white dark:text-zinc-900 text-xs sm:text-sm font-semibold shadow-xl flex items-center gap-2 backdrop-blur-md whitespace-nowrap">
+      <span id="toast-icon">✅</span>
+      <span id="toast-message">コピーしました！</span>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       JavaScript アプリケーション本体
+       ========================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================
+      // 1. AI設定・アスペクト比・各種プリセット定義
+      // =========================================================
+      const AI_CONFIG = {
+        gemini: {
+          name: 'Gemini',
+          hint: '✨ 自然な情景描写で光・構図・質感を滑らかに伝えます',
+          badgeBg: 'bg-blue-500',
+          logoGradient: 'from-blue-500 to-violet-600',
+          copyGradient: 'from-blue-600 to-violet-600',
+          activeChip: 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/25',
+          activeTab: 'bg-blue-600 text-white shadow-sm shadow-blue-500/20',
+          submitBtn: 'bg-blue-600 hover:bg-blue-500',
+          tabActiveClass: 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm'
+        },
+        chatgpt: {
+          name: 'ChatGPT',
+          hint: '💬 意図が伝わる構造化指示＆画風・比率の明確指定',
+          badgeBg: 'bg-emerald-500',
+          logoGradient: 'from-emerald-500 to-teal-600',
+          copyGradient: 'from-emerald-600 to-teal-600',
+          activeChip: 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-500/25',
+          activeTab: 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20',
+          submitBtn: 'bg-emerald-600 hover:bg-emerald-500',
+          tabActiveClass: 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+        },
+        grok: {
+          name: 'Grok',
+          hint: '📸 カメラ設定・ライティング・質感キーワードを強力最適化',
+          badgeBg: 'bg-orange-500',
+          logoGradient: 'from-zinc-700 to-orange-600',
+          copyGradient: 'from-zinc-800 via-zinc-900 to-orange-600 dark:from-orange-500 dark:to-amber-600',
+          activeChip: 'bg-orange-500 text-white border-orange-500 shadow-sm shadow-orange-500/25',
+          activeTab: 'bg-orange-500 text-white shadow-sm shadow-orange-500/20',
+          submitBtn: 'bg-orange-500 hover:bg-orange-400',
+          tabActiveClass: 'bg-white dark:bg-zinc-800 text-orange-600 dark:text-orange-400 shadow-sm'
+        }
+      };
+
+      const ASPECT_RATIOS = [
+        { id: '', label: '指定なし', desc: '指定なし', en: '' },
+        { id: '1:1', label: '1:1', desc: '正方形', en: '1:1 square' },
+        { id: '16:9', label: '16:9', desc: '横長ワイド', en: '16:9 widescreen' },
+        { id: '9:16', label: '9:16', desc: '縦長スマホ', en: '9:16 vertical' },
+        { id: '4:3', label: '4:3', desc: '標準横長', en: '4:3 horizontal' },
+        { id: '3:4', label: '3:4', desc: '縦長ポートレート', en: '3:4 portrait' }
+      ];
+
+      // 人物設定プリセット
+      const CHARACTER_PRESETS = {
+        genders: [
+          { id: 'female', label: '女性', en: 'woman' },
+          { id: 'male', label: '男性', en: 'man' },
+          { id: 'girl', label: '少女', en: 'girl' },
+          { id: 'boy', label: '少年', en: 'boy' },
+          { id: 'androgynous', label: '中性的', en: 'androgynous person' },
+          { id: '', label: '指定なし', en: '' }
+        ],
+        races: [
+          { id: 'rc_human', label: '人間', en: 'human' },
+          { id: 'rc_elf', label: 'エルフ', en: 'elf' },
+          { id: 'rc_beast', label: '獣人', en: 'beastkin with animal ears' },
+          { id: 'rc_cyborg', label: 'サイボーグ', en: 'cyborg' },
+          { id: 'rc_android', label: 'アンドロイド', en: 'android' },
+          { id: 'rc_angel', label: '天使', en: 'angel with wings' },
+          { id: 'rc_demon', label: '悪魔', en: 'demon with horns' },
+          { id: 'rc_vampire', label: '吸血鬼', en: 'vampire' },
+          { id: 'rc_fairy', label: '妖精', en: 'fairy' }
+        ],
+        styles: [
+          { id: 'cs_slim', label: 'スリム', en: 'slim build' },
+          { id: 'cs_muscular', label: '筋肉質', en: 'muscular build' },
+          { id: 'cs_petite', label: '小柄', en: 'petite stature' },
+          { id: 'cs_tall', label: '高身長', en: 'tall stature' },
+          { id: 'cs_cool', label: 'クール系', en: 'cool and composed vibe' },
+          { id: 'cs_cute', label: 'かわいい系', en: 'cute and charming look' },
+          { id: 'cs_mature', label: '大人っぽい', en: 'mature and elegant look' },
+          { id: 'cs_blacklong', label: '黒髪ロング', en: 'long black hair' },
+          { id: 'cs_silvershort', label: '銀髪ショート', en: 'short silver hair' },
+          { id: 'cs_glasses', label: 'メガネ', en: 'wearing glasses' }
+        ],
+        outfits: [
+          { id: 'of_casual', label: 'カジュアル', en: 'casual everyday outfit' },
+          { id: 'of_suit', label: 'スーツ', en: 'sharp tailored suit' },
+          { id: 'of_uniform', label: '学生服', en: 'Japanese school uniform' },
+          { id: 'of_dress', label: 'ドレス', en: 'elegant dress' },
+          { id: 'of_kimono', label: '和服・着物', en: 'traditional Japanese kimono' },
+          { id: 'of_street', label: 'ストリート系', en: 'trendy streetwear fashion' },
+          { id: 'of_cyber', label: 'サイバーパンク', en: 'futuristic cyberpunk techwear' },
+          { id: 'of_armor', label: 'ファンタジー鎧', en: 'ornate fantasy armor' },
+          { id: 'of_hoodie', label: 'パーカー', en: 'relaxed hoodie' },
+          { id: 'of_swimsuit', label: '水着', en: 'swimsuit' }
+        ],
+        poses: [
+          { id: 'ps_standing', label: '立っている', en: 'standing naturally' },
+          { id: 'ps_sitting', label: '座っている', en: 'sitting comfortably' },
+          { id: 'ps_walking', label: '歩いている', en: 'walking forward' },
+          { id: 'ps_running', label: '走っている', en: 'running dynamically' },
+          { id: 'ps_lookback', label: '振り返る', en: 'looking back over the shoulder' },
+          { id: 'ps_armsfolded', label: '腕を組む', en: 'standing with arms crossed' },
+          { id: 'ps_jumping', label: 'ジャンプ', en: 'jumping joyfully in mid-air' },
+          { id: 'ps_lying', label: '寝そべる', en: 'lying down relaxed' },
+          { id: 'ps_crouching', label: 'しゃがむ', en: 'crouching down' },
+          { id: 'ps_lookup', label: '見上げる', en: 'looking up toward the sky' }
+        ],
+        props: [
+          { id: 'pr_coffee', label: 'コーヒーカップ', en: 'a coffee cup' },
+          { id: 'pr_phone', label: 'スマートフォン', en: 'a smartphone' },
+          { id: 'pr_book', label: '本', en: 'an open book' },
+          { id: 'pr_bouquet', label: '花束', en: 'a bouquet of flowers' },
+          { id: 'pr_umbrella', label: '傘', en: 'an umbrella' },
+          { id: 'pr_sword', label: '剣', en: 'a fantasy sword' },
+          { id: 'pr_staff', label: '杖', en: 'an ornate magical staff' },
+          { id: 'pr_bag', label: 'バッグ', en: 'a stylish bag' },
+          { id: 'pr_camera', label: 'カメラ', en: 'a vintage camera' },
+          { id: 'pr_instrument', label: '楽器', en: 'a musical instrument' },
+          { id: 'pr_lantern', label: 'ランタン', en: 'a glowing lantern' },
+          { id: 'pr_headphones', label: 'ヘッドホン', en: 'headphones' }
+        ],
+        positions: [
+          { id: '', label: '指定なし', en: '' },
+          { id: 'pos_left', label: '左側', en: 'on the left side of the frame' },
+          { id: 'pos_center', label: '中央', en: 'in the center of the frame' },
+          { id: 'pos_right', label: '右側', en: 'on the right side of the frame' },
+          { id: 'pos_front', label: '手前（前景）', en: 'in the foreground' },
+          { id: 'pos_back', label: '奥（後景）', en: 'in the background' }
+        ],
+        groupArrangements: [
+          { id: 'ga_sidebyside', label: '横並びに立つ', en: 'standing side by side' },
+          { id: 'ga_facing', label: '向かい合う', en: 'facing each other' },
+          { id: 'ga_backtoback', label: '背中合わせ', en: 'standing back to back' },
+          { id: 'ga_diagonal', label: '斜めに並ぶ（奥行き）', en: 'arranged diagonally with depth' },
+          { id: 'ga_circle', label: '円になって集まる', en: 'gathered in a circle' },
+          { id: 'ga_depth', label: '手前と奥に配置', en: 'positioned with one in the foreground and another in the background' },
+          { id: 'ga_close', label: '肩を寄せ合う', en: 'standing close shoulder to shoulder' }
+        ],
+        groupInteractions: [
+          { id: 'gi_chatting', label: '笑顔で会話している', en: 'chatting happily with warm smiles' },
+          { id: 'gi_gazing', label: '見つめ合う', en: "gazing into each other's eyes" },
+          { id: 'gi_handhold', label: '手をつなぐ', en: 'holding hands' },
+          { id: 'gi_armaround', label: '肩を組む', en: "with arms around each other's shoulders" },
+          { id: 'gi_walking', label: '一緒に歩いている', en: 'walking together' },
+          { id: 'gi_leanback', label: '背中を預け合う', en: 'leaning back against each other' },
+          { id: 'gi_relaxing', label: '一緒に座ってくつろぐ', en: 'sitting and relaxing together' },
+          { id: 'gi_confront', label: '対峙している（バトル構図）', en: 'in a dramatic tense standoff composition' },
+          { id: 'gi_hug', label: 'ハグする', en: 'sharing a warm hug' },
+          { id: 'gi_lookup', label: '一緒に何かを見上げる', en: 'looking up together at the same view' }
+        ]
+      };
+
+      // シーン設定プリセット
+      const SCENE_PRESETS = {
+        backgrounds: [
+          { id: 'sc_city', label: '都会の街並み', en: 'bustling modern city streetscape' },
+          { id: 'sc_cafe', label: 'おしゃれなカフェ', en: 'stylish cozy artisanal cafe interior' },
+          { id: 'sc_forest', label: '森・自然', en: 'lush serene natural forest' },
+          { id: 'sc_beach', label: '海辺・ビーチ', en: 'scenic sunlit ocean beach shoreline' },
+          { id: 'sc_castle', label: 'ファンタジーの城下町', en: 'magical medieval fantasy castle town' },
+          { id: 'sc_cybercity', label: '近未来サイバーシティ', en: 'futuristic neon cyberpunk metropolis' },
+          { id: 'sc_alley', label: '日本の路地裏', en: 'atmospheric narrow Japanese backstreet alley' },
+          { id: 'sc_classroom', label: '学校の教室', en: 'nostalgic Japanese school classroom' },
+          { id: 'sc_study', label: '書斎・部屋', en: 'cozy detailed study room interior' },
+          { id: 'sc_space', label: '宇宙・星空', en: 'vast outer space and starry cosmos' },
+          { id: 'sc_shrine', label: '神社・鳥居', en: 'traditional Japanese Shinto shrine with torii gates' },
+          { id: 'sc_snowmt', label: '雪山', en: 'majestic snow-covered mountain peaks' },
+          { id: 'sc_simple', label: 'シンプル背景（単色/スタジオ）', en: 'clean minimalist seamless studio background' }
+        ],
+        times: [
+          { id: '', label: '指定なし', en: '' },
+          { id: 'tm_dawn', label: '早朝・夜明け', en: 'early dawn sunrise' },
+          { id: 'tm_morning', label: '午前・朝', en: 'bright fresh morning' },
+          { id: 'tm_noon', label: '真昼', en: 'clear midday' },
+          { id: 'tm_afternoon', label: '午後', en: 'warm sunny afternoon' },
+          { id: 'tm_golden', label: '夕方・マジックアワー', en: 'golden hour sunset' },
+          { id: 'tm_blue', label: '黄昏・ブルーアワー', en: 'twilight blue hour' },
+          { id: 'tm_night', label: '夜', en: 'nighttime' },
+          { id: 'tm_midnight', label: '深夜', en: 'quiet late midnight' }
+        ],
+        weathers: [
+          { id: 'wt_sunny', label: '晴れ・快晴', en: 'clear sunny sky' },
+          { id: 'wt_cloudy', label: '曇り', en: 'soft overcast cloudy sky' },
+          { id: 'wt_rain', label: '雨・濡れた路面', en: 'falling rain with glistening wet reflections' },
+          { id: 'wt_snow', label: '雪', en: 'gently falling snow' },
+          { id: 'wt_fog', label: '霧・もや', en: 'atmospheric mist and soft fog' },
+          { id: 'wt_sakura', label: '桜（春）', en: 'springtime with fluttering cherry blossom petals' },
+          { id: 'wt_summer', label: '入道雲（夏）', en: 'vivid summer sky with towering cumulonimbus clouds' },
+          { id: 'wt_autumn', label: '紅葉（秋）', en: 'autumn foliage with vibrant red and golden leaves' },
+          { id: 'wt_winter', label: 'イルミネーション・冬', en: 'sparkling winter holiday illuminations' },
+          { id: 'wt_storm', label: '嵐・稲妻', en: 'dramatic storm clouds with distant lightning' }
+        ]
+      };
+
+      // =========================================================
+      // 1.5 事前警告（NGワード検知）＆言い換え提案辞書
+      // =========================================================
+      const SAFETY_RULES = [
+        {
+          id: 'sexual_explicit',
+          category: '性的・露出表現',
+          severity: 'high',
+          ja: ['全裸', 'ヌード', '裸', 'エロ', 'ポルノ', 'アダルト', '性的', '官能的', 'エッチ', 'わいせつ', '乳首', '性器', '裸体'],
+          en: ['nude', 'naked', 'nsfw', 'porn', 'hentai', 'erotic', 'explicit', 'topless', 'nudity', 'nipple'],
+          suggestions: [
+            { ja: 'エレガントなドレープドレス姿', en: 'wearing an elegant draped dress' },
+            { ja: '古典的な大理石彫刻風の造形美', en: 'classical marble sculpture aesthetic' },
+            { ja: '逆光の美しいシルエット表現', en: 'artistic backlit silhouette' }
+          ]
+        },
+        {
+          id: 'sexual_suggestive',
+          category: '露出・際どい表現',
+          severity: 'medium',
+          ja: ['セクシー', '下着', 'ランジェリー', '際どい', 'ビキニ', '水着', '胸の谷間', '巨乳', 'バスト', '胸', '挑発的'],
+          en: ['sexy', 'lingerie', 'underwear', 'cleavage', 'sensual', 'bikini', 'swimsuit', 'seductive', 'provocative', 'boudoir'],
+          suggestions: [
+            { ja: '洗練されたハイファッション衣装', en: 'refined high-fashion attire' },
+            { ja: 'スタイリッシュなリゾートウェア', en: 'stylish summer resort wear' },
+            { ja: '魅力的なファッションポートレート', en: 'glamorous editorial fashion portrait' }
+          ]
+        },
+        {
+          id: 'violence_blood',
+          category: '流血・グロ表現',
+          severity: 'high',
+          ja: ['血まみれ', '流血', '血しぶき', '鮮血', 'グロテスク', 'グロ', '惨殺', '切断', '内臓', '血'],
+          en: ['bloody', 'blood', 'gore', 'gory', 'bloodshed', 'bleeding', 'dismemberment', 'viscera', 'splatter'],
+          suggestions: [
+            { ja: '赤い花びらが舞う演出', en: 'swirling crimson petals in the air' },
+            { ja: 'ドラマチックな真紅のライティング', en: 'dramatic crimson cinematic lighting' },
+            { ja: '激しい戦いの緊迫感', en: 'intense dramatic battle atmosphere' }
+          ]
+        },
+        {
+          id: 'violence_lethal',
+          category: '暴力・死亡表現',
+          severity: 'high',
+          ja: ['殺人', '殺す', '殺害', '死体', '遺体', '拷問', '暴力', '処刑', '自傷', '自殺', '虐殺'],
+          en: ['murder', 'kill', 'killing', 'corpse', 'dead body', 'dead', 'torture', 'violence', 'violent', 'execution', 'massacre'],
+          suggestions: [
+            { ja: '緊迫感のある対峙シーン', en: 'tense dramatic standoff scene' },
+            { ja: 'ダークファンタジー風の重厚な演出', en: 'epic dark fantasy atmosphere' },
+            { ja: '劇的なバトルの瞬間', en: 'cinematic climactic action moment' }
+          ]
+        },
+        {
+          id: 'violence_weapons',
+          category: '武器・爆発表現',
+          severity: 'medium',
+          ja: ['拳銃', '機関銃', 'ライフル', 'ピストル', '銃', 'ナイフ', '刃物', '剣', '日本刀', '斬る', '刺す', '爆弾', '爆発', '武器'],
+          en: ['pistol', 'rifle', 'gun', 'firearm', 'knife', 'blade', 'sword', 'katana', 'weapon', 'bomb', 'explosion', 'stab', 'shoot'],
+          suggestions: [
+            { ja: 'ファンタジー風の装飾された杖', en: 'ornate fantasy magical staff' },
+            { ja: 'ダイナミックなシルエットのアクション', en: 'dynamic silhouette action pose' },
+            { ja: 'SF風の光るデバイス', en: 'glowing futuristic sci-fi device' }
+          ]
+        },
+        {
+          id: 'violence_injury',
+          category: '負傷・傷口表現',
+          severity: 'medium',
+          ja: ['傷口', '裂傷', '切り傷', '火傷', '怪我', '傷'],
+          en: ['wound', 'wounded', 'injury', 'scarred', 'gash', 'bruise'],
+          suggestions: [
+            { ja: '戦いの跡を感じる埃と擦れ', en: 'weathered dust and battle-worn outfit' },
+            { ja: '歴戦の雰囲気を纏った姿', en: 'seasoned veteran hero appearance' },
+            { ja: '嵐を乗り越えたドラマチックな表情', en: 'resilient dramatic expression after a storm' }
+          ]
+        },
+        {
+          id: 'copyright_ip',
+          category: '著作権・キャラクター名',
+          severity: 'medium',
+          ja: ['ディズニー', 'ジブリ', 'ポケモン', 'ピカチュウ', 'マリオ', 'ミッキー', 'ワンピース', '鬼滅の刃', 'マーベル', 'スパイダーマン', 'ガンダム', 'ドラえもん', 'サンリオ', 'ハローキティ'],
+          en: ['disney', 'ghibli', 'studio ghibli', 'pokemon', 'pikachu', 'mario', 'mickey mouse', 'mickey', 'marvel', 'spider-man', 'spiderman', 'gundam', 'hello kitty', 'pixar'],
+          suggestions: [
+            { ja: '温かみのある手描きアニメ映画風', en: 'warm hand-drawn animated film style' },
+            { ja: 'クラシカルな3Dアニメーション映画風', en: 'classic stylized 3D animated movie aesthetic' },
+            { ja: 'ノスタルジックな水彩ファンタジー風', en: 'nostalgic whimsical watercolor fantasy style' }
+          ]
+        }
+      ];
+
+      // 6カテゴリーのプリセット
+      const CATEGORIES = [
+        {
+          id: 'style',
+          shortName: '画風',
+          title: '画風・スタイル',
+          items: [
+            { id: 'st_photo', label: '実写', en: 'photorealistic photography' },
+            { id: 'st_anime', label: 'アニメ調', en: 'high-quality Japanese anime style' },
+            { id: 'st_watercolor', label: '水彩画', en: 'delicate watercolor painting' },
+            { id: 'st_oil', label: '油絵', en: 'rich oil painting with textured brushstrokes' },
+            { id: 'st_3d', label: '3Dレンダー', en: '3D Octane render, Unreal Engine 5 style' },
+            { id: 'st_cyberpunk', label: 'サイバーパンク', en: 'cyberpunk futuristic art style' },
+            { id: 'st_pixel', label: 'ピクセルアート', en: 'detailed 16-bit pixel art' },
+            { id: 'st_ukiyoe', label: '浮世絵風', en: 'traditional Japanese Ukiyo-e woodblock print' },
+            { id: 'st_nostalgic', label: 'ノスタルジック', en: 'nostalgic retro illustration style' },
+            { id: 'st_minimal', label: 'ミニマル', en: 'clean minimalist graphic style' },
+            { id: 'st_poster', label: '映画ポスター風', en: 'epic cinematic movie poster art' },
+            { id: 'st_clay', label: 'クレイアニメ風', en: 'charming stop-motion claymation style' },
+            { id: 'st_film', label: 'フィルム写真風', en: 'vintage 35mm analog film photography' },
+            { id: 'st_pencil', label: '鉛筆デッサン', en: 'intricate graphite pencil sketch' }
+          ]
+        },
+        {
+          id: 'composition',
+          shortName: '構図・カメラ',
+          title: '構図・カメラ',
+          items: [
+            { id: 'cp_closeup', label: 'クローズアップ', en: 'extreme close-up shot' },
+            { id: 'cp_fullbody', label: '全身', en: 'full-body shot' },
+            { id: 'cp_wide', label: '広角レンズ', en: 'wide-angle 24mm lens perspective' },
+            { id: 'cp_topdown', label: '俯瞰', en: "bird's-eye view, top-down angle" },
+            { id: 'cp_low', label: 'ローアングル', en: 'dramatic low-angle shot' },
+            { id: 'cp_bokeh', label: '背景ぼかし', en: 'shallow depth of field, creamy f/1.4 bokeh' },
+            { id: 'cp_35mm', label: '35mmレンズ', en: 'shot on 35mm prime lens' },
+            { id: 'cp_portrait', label: 'ポートレート', en: '85mm portrait composition' },
+            { id: 'cp_symmetry', label: 'シンメトリー', en: 'perfect symmetrical composition' },
+            { id: 'cp_macro', label: 'マクロ撮影', en: 'macro photography, sharp focus on tiny details' },
+            { id: 'cp_dynamic', label: '躍動感ある斜め構図', en: 'dynamic Dutch angle composition' },
+            { id: 'cp_rule3', label: '三分割構図', en: 'balanced rule of thirds framing' }
+          ]
+        },
+        {
+          id: 'lighting',
+          shortName: '光・照明',
+          title: '光・ライティング',
+          items: [
+            { id: 'lt_golden', label: 'ゴールデンアワー', en: 'warm golden hour sunset light' },
+            { id: 'lt_natural', label: '自然光', en: 'soft natural window daylight' },
+            { id: 'lt_neon', label: 'ネオンライト', en: 'vibrant glowing neon lights' },
+            { id: 'lt_dramatic', label: 'ドラマチック照明', en: 'dramatic chiaroscuro lighting' },
+            { id: 'lt_backlight', label: '逆光', en: 'radiant backlighting with rim light' },
+            { id: 'lt_soft', label: 'ソフトライト', en: 'diffused softbox lighting' },
+            { id: 'lt_studio', label: 'スタジオ照明', en: 'professional studio three-point lighting' },
+            { id: 'lt_moon', label: '月明かり', en: 'serene silvery moonlight' },
+            { id: 'lt_komorebi', label: '木漏れ日', en: 'dappled sunlight filtering through leaves' },
+            { id: 'lt_cinematic', label: 'シネマティック照明', en: 'cinematic volumetric god rays' },
+            { id: 'lt_candle', label: 'キャンドルの光', en: 'warm flickering candlelight' }
+          ]
+        },
+        {
+          id: 'mood',
+          shortName: '雰囲気',
+          title: '雰囲気・ムード',
+          items: [
+            { id: 'md_fantasy', label: '幻想的', en: 'ethereal, dreamy, magical atmosphere' },
+            { id: 'md_calm', label: '落ち着いた', en: 'calm, peaceful, serene mood' },
+            { id: 'md_lively', label: '活気ある', en: 'vibrant, energetic, lively atmosphere' },
+            { id: 'md_dark', label: 'ダーク・ミステリアス', en: 'dark, moody, mysterious atmosphere' },
+            { id: 'md_fresh', label: '爽やか', en: 'fresh, airy, refreshing mood' },
+            { id: 'md_retro', label: 'レトロ', en: 'vintage retro nostalgic vibe' },
+            { id: 'md_scifi', label: '近未来', en: 'sleek futuristic sci-fi atmosphere' },
+            { id: 'md_warm', label: '温かみのある', en: 'cozy, heartwarming, inviting mood' },
+            { id: 'md_emotional', label: 'エモーショナル', en: 'deeply emotional, poignant atmosphere' },
+            { id: 'md_luxury', label: 'ラグジュアリー', en: 'luxurious, refined, high-end aesthetic' },
+            { id: 'md_whimsical', label: 'メルヘン・童話風', en: 'whimsical storybook atmosphere' }
+          ]
+        },
+        {
+          id: 'color',
+          shortName: '色彩',
+          title: '色彩・トーン',
+          items: [
+            { id: 'cl_pastel', label: 'パステルカラー', en: 'soft pastel color palette' },
+            { id: 'cl_mono', label: 'モノクロ', en: 'fine art black and white monochrome' },
+            { id: 'cl_vivid', label: 'ビビッド', en: 'vivid, highly saturated bold colors' },
+            { id: 'cl_earth', label: 'アースカラー', en: 'natural muted earth tones' },
+            { id: 'cl_cool', label: '寒色系', en: 'cool blue and teal color grading' },
+            { id: 'cl_warm', label: '暖色系', en: 'warm amber and terracotta tones' },
+            { id: 'cl_film', label: 'フィルム調', en: 'Kodak Portra 400 analog color tone' },
+            { id: 'cl_contrast', label: 'ハイコントラスト', en: 'bold high-contrast tones' },
+            { id: 'cl_sepia', label: 'セピア調', en: 'antique warm sepia tone' },
+            { id: 'cl_tealorange', label: 'ティール＆オレンジ', en: 'cinematic teal and orange color grading' },
+            { id: 'cl_matte', label: 'マット調', en: 'faded matte low-contrast finish' }
+          ]
+        },
+        {
+          id: 'quality',
+          shortName: '品質',
+          title: '品質・ディテール',
+          items: [
+            { id: 'ql_8k', label: '超高精細8K', en: 'ultra-detailed, 8k resolution, sharp focus' },
+            { id: 'ql_texture', label: '緻密な質感', en: 'intricate hyper-realistic textures' },
+            { id: 'ql_skin', label: 'リアルな肌', en: 'natural realistic skin texture with fine pores' },
+            { id: 'ql_lineart', label: '繊細な線画', en: 'exquisite delicate lineart, clean ink details' },
+            { id: 'ql_photoreal', label: 'フォトリアリスティック', en: 'indistinguishable from real photograph, RAW photo' },
+            { id: 'ql_glossy', label: '光沢感', en: 'glossy specular reflections, ray tracing' },
+            { id: 'ql_moviestill', label: '映画のワンシーン', en: 'cinematic film still, anamorphic lens flare' },
+            { id: 'ql_masterpiece', label: '傑作クオリティ', en: 'masterpiece, award-winning visual composition' },
+            { id: 'ql_grain', label: '自然なフィルム粒子', en: 'subtle organic analog film grain' },
+            { id: 'ql_fabric', label: '布・素材の細部', en: 'detailed woven fabric and material micro-details' }
+          ]
+        }
+      ];
+
+      const RANDOM_SUBJECTS = [
+        '雨上がりの渋谷の路地裏で、ネオンの光を見上げる黒猫',
+        '朝日が差し込むカフェのテーブルに置かれたラテアートと焼きたてのクロワッサン',
+        '雲の上に浮かぶ幻想的な図書館で、光る古書を読む少女',
+        '桜吹雪が舞う海辺の小さな木造駅に停まるレトロな電車',
+        '夕暮れの海岸線を走るクラシックカーとオレンジ色の水平線'
+      ];
+
+      // =========================================================
+      // 2. ストレージキー＆アプリケーション状態 (State)
+      // =========================================================
+      const STORAGE_KEYS = {
+        HISTORY: 'prompt_studio_history_v2',
+        FAVORITES: 'prompt_studio_favorites_v2',
+        CUSTOM_WORDS: 'prompt_studio_custom_words_v1',
+        CUSTOM_LABELS: 'prompt_studio_custom_labels_v1',
+        THEME: 'prompt_studio_theme_v1',
+        SAFETY_CHECK: 'prompt_studio_safety_check_v1'
+      };
+
+      const state = {
+        ai: 'gemini',
+        lang: 'en',
+        subject: '',
+        ratio: '',
+        activeCategory: 'style',
+        selected: {},          // { [catId]: [itemId, ...] }
+        customWords: {},       // { [catId]: [{ id, label, en, isCustom: true }] }
+        customLabels: {},      // { [groupKey]: [{ id, label, en, isCustom: true }] }
+        activeLabelModal: null,// { groupKey, title }
+        characters: [],        // 最大3人
+        activeCharacterIndex: 0,
+        groupRelation: {
+          arrangement: '',
+          arrangementCustom: '',
+          interaction: '',
+          interactionCustom: ''
+        },
+        scene: {
+          open: false,
+          background: '',
+          backgroundCustom: '',
+          time: '',
+          timeCustom: '',
+          weathers: [],
+          weatherCustom: ''
+        },
+        textInImage: '',
+        negative: '',
+        addFormOpen: false,
+        optionsOpen: false,
+        previewExpanded: false,
+        safetyCheckEnabled: true,
+        safetyBannerOpen: true,
+        historyTab: 'history'
+      };
+
+      // DOM要素キャッシュ
+      const dom = {
+        themeColorMeta: document.getElementById('theme-color-meta'),
+        appLogoBadge: document.getElementById('app-logo-badge'),
+        btnRandom: document.getElementById('btn-random'),
+        btnReset: document.getElementById('btn-reset'),
+        btnHistory: document.getElementById('btn-history'),
+        historyBadge: document.getElementById('history-badge'),
+        btnTheme: document.getElementById('btn-theme'),
+        aiTabs: document.querySelectorAll('.ai-tab'),
+        aiHint: document.getElementById('ai-hint'),
+        btnSafetyToggle: document.getElementById('btn-safety-toggle'),
+        safetyToggleDot: document.getElementById('safety-toggle-dot'),
+        langBtns: document.querySelectorAll('.lang-btn'),
+        subjectInput: document.getElementById('subject-input'),
+        btnClearSubject: document.getElementById('btn-clear-subject'),
+        textInImage: document.getElementById('text-in-image'),
+        ratioLabel: document.getElementById('ratio-label'),
+        ratioContainer: document.getElementById('ratio-container'),
+        safetyWarningSection: document.getElementById('safety-warning-section'),
+        btnToggleSafetyBanner: document.getElementById('btn-toggle-safety-banner'),
+        safetyBannerIcon: document.getElementById('safety-banner-icon'),
+        safetyBannerTitle: document.getElementById('safety-banner-title'),
+        safetyRiskBadge: document.getElementById('safety-risk-badge'),
+        safetyAiAdvice: document.getElementById('safety-ai-advice'),
+        safetyBannerChevron: document.getElementById('safety-banner-chevron'),
+        safetyBannerBody: document.getElementById('safety-banner-body'),
+        safetyFindingsList: document.getElementById('safety-findings-list'),
+        charCountBadge: document.getElementById('char-count-badge'),
+        btnAddCharacterHeader: document.getElementById('btn-add-character-header'),
+        charEmptyState: document.getElementById('char-empty-state'),
+        charEditorWrap: document.getElementById('char-editor-wrap'),
+        charTabsBar: document.getElementById('char-tabs-bar'),
+        charActiveForm: document.getElementById('char-active-form'),
+        groupRelationPanel: document.getElementById('group-relation-panel'),
+        btnToggleScene: document.getElementById('btn-toggle-scene'),
+        sceneCountBadge: document.getElementById('scene-count-badge'),
+        sceneSummaryBadges: document.getElementById('scene-summary-badges'),
+        sceneChevron: document.getElementById('scene-chevron'),
+        sceneBody: document.getElementById('scene-body'),
+        sceneFormContainer: document.getElementById('scene-form-container'),
+        selectedSummarySection: document.getElementById('selected-summary-section'),
+        selectedTotalBadge: document.getElementById('selected-total-badge'),
+        btnClearAllTags: document.getElementById('btn-clear-all-tags'),
+        selectedSummaryChips: document.getElementById('selected-summary-chips'),
+        categoryTabs: document.getElementById('category-tabs'),
+        activeCatTitle: document.getElementById('active-cat-title'),
+        btnClearActiveCat: document.getElementById('btn-clear-active-cat'),
+        btnToggleAddWord: document.getElementById('btn-toggle-add-word'),
+        addWordIcon: document.getElementById('add-word-icon'),
+        addWordFormWrap: document.getElementById('add-word-form-wrap'),
+        addWordForm: document.getElementById('add-word-form'),
+        addWordCatName: document.getElementById('add-word-cat-name'),
+        customWordJa: document.getElementById('custom-word-ja'),
+        customWordEn: document.getElementById('custom-word-en'),
+        btnCancelAddWord: document.getElementById('btn-cancel-add-word'),
+        btnSubmitAddWord: document.getElementById('btn-submit-add-word'),
+        activeCatChips: document.getElementById('active-cat-chips'),
+        customWordHint: document.getElementById('custom-word-hint'),
+        btnAccordionOptions: document.getElementById('btn-accordion-options'),
+        optionsActiveDot: document.getElementById('options-active-dot'),
+        accordionChevron: document.getElementById('accordion-chevron'),
+        accordionOptionsBody: document.getElementById('accordion-options-body'),
+        negativeInput: document.getElementById('negative-input'),
+        btnTogglePreview: document.getElementById('btn-toggle-preview'),
+        previewAiBadge: document.getElementById('preview-ai-badge'),
+        previewCharCount: document.getElementById('preview-char-count'),
+        footerSafetyBadge: document.getElementById('footer-safety-badge'),
+        btnExpandPreview: document.getElementById('btn-expand-preview'),
+        previewBox: document.getElementById('prompt-preview-box'),
+        btnSaveFav: document.getElementById('btn-save-fav'),
+        btnCopy: document.getElementById('btn-copy'),
+        historyModal: document.getElementById('history-modal'),
+        historyBackdrop: document.getElementById('history-backdrop'),
+        historyPanel: document.getElementById('history-panel'),
+        btnCloseHistory: document.getElementById('btn-close-history'),
+        historyList: document.getElementById('history-list'),
+        htabBtns: document.querySelectorAll('.htab-btn'),
+        customLabelModal: document.getElementById('custom-label-modal'),
+        customLabelBackdrop: document.getElementById('custom-label-backdrop'),
+        customLabelPanel: document.getElementById('custom-label-panel'),
+        customLabelModalTitle: document.getElementById('custom-label-modal-title'),
+        btnCloseCustomLabel: document.getElementById('btn-close-custom-label'),
+        customLabelForm: document.getElementById('custom-label-form'),
+        modalCustomJa: document.getElementById('modal-custom-ja'),
+        modalCustomEn: document.getElementById('modal-custom-en'),
+        btnCancelCustomLabel: document.getElementById('btn-cancel-custom-label'),
+        btnSubmitCustomLabel: document.getElementById('btn-submit-custom-label'),
+        toast: document.getElementById('toast'),
+        toastIcon: document.getElementById('toast-icon'),
+        toastMessage: document.getElementById('toast-message')
+      };
+
+      // =========================================================
+      // 3. ストレージ＆データヘルパー関数
+      // =========================================================
+      function loadStorage(key, fallback) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        } catch (err) {
+          return fallback;
+        }
+      }
+
+      function saveStorage(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch (err) {
+          // プライベートブラウズ等で保存不可の場合は無視
+        }
+      }
+
+      function getCategoryItems(catId) {
+        const cat = CATEGORIES.find(c => c.id === catId);
+        const presets = cat ? cat.items : [];
+        const customs = state.customWords[catId] || [];
+        return [...presets, ...customs];
+      }
+
+      function getSelectedItems(catId) {
+        const ids = state.selected[catId] || [];
+        const all = getCategoryItems(catId);
+        return ids.map(id => all.find(item => item.id === id)).filter(Boolean);
+      }
+
+      // 人物設定・複数人・シーン設定のプリセット＋カスタムラベル統合取得
+      const FIELD_PRESET_MAP = {
+        race: () => CHARACTER_PRESETS.races,
+        styles: () => CHARACTER_PRESETS.styles,
+        outfit: () => CHARACTER_PRESETS.outfits,
+        pose: () => CHARACTER_PRESETS.poses,
+        props: () => CHARACTER_PRESETS.props,
+        arrangement: () => CHARACTER_PRESETS.groupArrangements,
+        interaction: () => CHARACTER_PRESETS.groupInteractions,
+        background: () => SCENE_PRESETS.backgrounds,
+        time: () => SCENE_PRESETS.times,
+        weathers: () => SCENE_PRESETS.weathers
+      };
+
+      function getFieldItems(groupKey) {
+        const presets = FIELD_PRESET_MAP[groupKey] ? FIELD_PRESET_MAP[groupKey]() : [];
+        const customs = state.customLabels[groupKey] || [];
+        return [...presets, ...customs];
+      }
+
+      function createCharacter() {
+        return {
+          id: 'ch_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+          gender: 'female',
+          race: '',
+          raceCustom: '',
+          styles: [],
+          styleCustom: '',
+          outfit: '',
+          outfitCustom: '',
+          pose: '',
+          poseCustom: '',
+          props: [],
+          propsCustom: '',
+          action: '',
+          position: ''
+        };
+      }
+
+      function escapeRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+
+      // =========================================================
+      // 4. AI別プロンプト生成エンジン
+      // =========================================================
+      function formatCharacterPhrase(char, isEn, includePosition) {
+        const genderObj = CHARACTER_PRESETS.genders.find(g => g.id === char.gender);
+        const raceObj = getFieldItems('race').find(r => r.id === char.race);
+        const styleObjs = (char.styles || []).map(id => getFieldItems('styles').find(s => s.id === id)).filter(Boolean);
+        const outfitObj = getFieldItems('outfit').find(o => o.id === char.outfit);
+        const poseObj = getFieldItems('pose').find(p => p.id === char.pose);
+        const propObjs = (char.props || []).map(id => getFieldItems('props').find(p => p.id === id)).filter(Boolean);
+        const posObj = includePosition ? CHARACTER_PRESETS.positions.find(p => p.id === char.position) : null;
+
+        const raceCustom = (char.raceCustom || '').trim();
+        const styleCustom = (char.styleCustom || '').trim();
+        const outfitCustom = (char.outfitCustom || '').trim();
+        const poseCustom = (char.poseCustom || '').trim();
+        const propsCustom = (char.propsCustom || '').trim();
+        const action = (char.action || '').trim();
+
+        if (isEn) {
+          const baseParts = [];
+          if (raceObj && raceObj.id !== 'rc_human') baseParts.push(raceObj.en);
+          else if (raceObj && raceObj.id === 'rc_human' && !raceCustom) baseParts.push('human');
+          if (raceCustom) baseParts.push(raceCustom);
+          if (genderObj && genderObj.en) baseParts.push(genderObj.en);
+
+          let main = baseParts.length > 0 ? `a ${baseParts.join(' ')}` : 'a character';
+          const details = [];
+
+          const styleList = [...styleObjs.map(s => s.en), ...(styleCustom ? [styleCustom] : [])];
+          if (styleList.length) details.push(styleList.join(', '));
+
+          const outfitList = [...(outfitObj ? [outfitObj.en] : []), ...(outfitCustom ? [outfitCustom] : [])];
+          if (outfitList.length) details.push(`wearing ${outfitList.join(', ')}`);
+
+          const poseList = [...(poseObj ? [poseObj.en] : []), ...(poseCustom ? [poseCustom] : [])];
+          if (poseList.length) details.push(poseList.join(', '));
+
+          const propList = [...propObjs.map(p => p.en), ...(propsCustom ? [propsCustom] : [])];
+          if (propList.length) details.push(`holding ${propList.join(' and ')}`);
+
+          if (action) details.push(action);
+          if (posObj && posObj.en) details.push(posObj.en);
+
+          return details.length ? `${main}, ${details.join(', ')}` : main;
+        } else {
+          const parts = [];
+          const raceList = [...(raceObj ? [raceObj.label] : []), ...(raceCustom ? [raceCustom] : [])];
+          const genderText = genderObj && genderObj.id ? genderObj.label : '';
+          if (raceList.length || genderText) {
+            parts.push(`${raceList.join('・')}${raceList.length && genderText ? 'の' : ''}${genderText || '人物'}`);
+          } else {
+            parts.push('人物');
+          }
+
+          const styleList = [...styleObjs.map(s => s.label), ...(styleCustom ? [styleCustom] : [])];
+          if (styleList.length) parts.push(`特徴：${styleList.join('、')}`);
+
+          const outfitList = [...(outfitObj ? [outfitObj.label] : []), ...(outfitCustom ? [outfitCustom] : [])];
+          if (outfitList.length) parts.push(`服装：${outfitList.join('、')}`);
+
+          const poseList = [...(poseObj ? [poseObj.label] : []), ...(poseCustom ? [poseCustom] : [])];
+          if (poseList.length) parts.push(`姿勢：${poseList.join('、')}`);
+
+          const propList = [...propObjs.map(p => p.label), ...(propsCustom ? [propsCustom] : [])];
+          if (propList.length) parts.push(`小物：${propList.join('、')}`);
+
+          if (action) parts.push(`表情・動作：${action}`);
+          if (posObj && posObj.id) parts.push(`配置：${posObj.label}`);
+
+          return parts.join('（').replace(/（/, '（') + (parts.length > 1 ? '）' : '');
+        }
+      }
+
+      // 日本語人物フレーズの括弧整形
+      function formatCharacterPhraseClean(char, isEn, includePosition) {
+        if (isEn) return formatCharacterPhrase(char, true, includePosition);
+        const genderObj = CHARACTER_PRESETS.genders.find(g => g.id === char.gender);
+        const raceObj = getFieldItems('race').find(r => r.id === char.race);
+        const styleObjs = (char.styles || []).map(id => getFieldItems('styles').find(s => s.id === id)).filter(Boolean);
+        const outfitObj = getFieldItems('outfit').find(o => o.id === char.outfit);
+        const poseObj = getFieldItems('pose').find(p => p.id === char.pose);
+        const propObjs = (char.props || []).map(id => getFieldItems('props').find(p => p.id === id)).filter(Boolean);
+        const posObj = includePosition ? CHARACTER_PRESETS.positions.find(p => p.id === char.position) : null;
+
+        const raceCustom = (char.raceCustom || '').trim();
+        const styleCustom = (char.styleCustom || '').trim();
+        const outfitCustom = (char.outfitCustom || '').trim();
+        const poseCustom = (char.poseCustom || '').trim();
+        const propsCustom = (char.propsCustom || '').trim();
+        const action = (char.action || '').trim();
+
+        const raceList = [...(raceObj ? [raceObj.label] : []), ...(raceCustom ? [raceCustom] : [])];
+        const genderText = genderObj && genderObj.id ? genderObj.label : '';
+        const head = (raceList.length || genderText)
+          ? `${raceList.join('・')}${raceList.length && genderText ? 'の' : ''}${genderText || '人物'}`
+          : '人物';
+
+        const sub = [];
+        const styleList = [...styleObjs.map(s => s.label), ...(styleCustom ? [styleCustom] : [])];
+        if (styleList.length) sub.push(`特徴：${styleList.join('、')}`);
+        const outfitList = [...(outfitObj ? [outfitObj.label] : []), ...(outfitCustom ? [outfitCustom] : [])];
+        if (outfitList.length) sub.push(`服装：${outfitList.join('、')}`);
+        const poseList = [...(poseObj ? [poseObj.label] : []), ...(poseCustom ? [poseCustom] : [])];
+        if (poseList.length) sub.push(`姿勢：${poseList.join('、')}`);
+        const propList = [...propObjs.map(p => p.label), ...(propsCustom ? [propsCustom] : [])];
+        if (propList.length) sub.push(`小物：${propList.join('、')}`);
+        if (action) sub.push(`表情・動作：${action}`);
+        if (posObj && posObj.id) sub.push(`位置：${posObj.label}`);
+
+        return sub.length ? `${head}（${sub.join('／')}）` : head;
+      }
+
+      function formatGroupRelation(isEn) {
+        if (state.characters.length < 2) return '';
+        const gr = state.groupRelation;
+        const arrObj = getFieldItems('arrangement').find(a => a.id === gr.arrangement);
+        const intObj = getFieldItems('interaction').find(i => i.id === gr.interaction);
+        const arrCustom = (gr.arrangementCustom || '').trim();
+        const intCustom = (gr.interactionCustom || '').trim();
+
+        const parts = [];
+        if (isEn) {
+          if (arrObj) parts.push(arrObj.en);
+          if (arrCustom) parts.push(arrCustom);
+          if (intObj) parts.push(intObj.en);
+          if (intCustom) parts.push(intCustom);
+          return parts.join(', ');
+        } else {
+          if (arrObj) parts.push(arrObj.label);
+          if (arrCustom) parts.push(arrCustom);
+          if (intObj) parts.push(intObj.label);
+          if (intCustom) parts.push(intCustom);
+          return parts.join('、');
+        }
+      }
+
+      function buildCharactersSummary(isEn) {
+        const count = state.characters.length;
+        if (count === 0) return '';
+        const includePos = count >= 2;
+        const list = state.characters.map((ch, idx) => {
+          const phrase = formatCharacterPhraseClean(ch, isEn, includePos);
+          return count > 1 ? (isEn ? `Character ${idx + 1}: ${phrase}` : `人物${idx + 1}：${phrase}`) : phrase;
+        });
+        const rel = formatGroupRelation(isEn);
+        if (isEn) {
+          let out = count > 1 ? `${count} characters (${list.join('; ')})` : list[0];
+          if (rel) out += `, ${rel}`;
+          return out;
+        } else {
+          let out = count > 1 ? `${count}人の人物（${list.join(' ／ ')}）` : list[0];
+          if (rel) out += `、複数人の関係・配置：${rel}`;
+          return out;
+        }
+      }
+
+      function buildSceneSummary(isEn) {
+        const sc = state.scene;
+        const bgObj = getFieldItems('background').find(b => b.id === sc.background);
+        const tmObj = getFieldItems('time').find(t => t.id === sc.time);
+        const wtObjs = (sc.weathers || []).map(id => getFieldItems('weathers').find(w => w.id === id)).filter(Boolean);
+
+        const bgCustom = (sc.backgroundCustom || '').trim();
+        const tmCustom = (sc.timeCustom || '').trim();
+        const wtCustom = (sc.weatherCustom || '').trim();
+
+        const parts = [];
+        if (isEn) {
+          const bgList = [...(bgObj ? [bgObj.en] : []), ...(bgCustom ? [bgCustom] : [])];
+          if (bgList.length) parts.push(`set in ${bgList.join(', ')}`);
+          const tmList = [...(tmObj && tmObj.en ? [tmObj.en] : []), ...(tmCustom ? [tmCustom] : [])];
+          if (tmList.length) parts.push(`during ${tmList.join(', ')}`);
+          const wtList = [...wtObjs.map(w => w.en), ...(wtCustom ? [wtCustom] : [])];
+          if (wtList.length) parts.push(wtList.join(', '));
+          return parts.join(', ');
+        } else {
+          const bgList = [...(bgObj ? [bgObj.label] : []), ...(bgCustom ? [bgCustom] : [])];
+          if (bgList.length) parts.push(`背景：${bgList.join('、')}`);
+          const tmList = [...(tmObj && tmObj.id ? [tmObj.label] : []), ...(tmCustom ? [tmCustom] : [])];
+          if (tmList.length) parts.push(`時間帯：${tmList.join('、')}`);
+          const wtList = [...wtObjs.map(w => w.label), ...(wtCustom ? [wtCustom] : [])];
+          if (wtList.length) parts.push(`季節・天候：${wtList.join('、')}`);
+          return parts.join('／');
+        }
+      }
+
+      function buildPrompt() {
+        const isEn = state.lang === 'en';
+        const subject = state.subject.trim();
+        const charsText = buildCharactersSummary(isEn);
+        const sceneText = buildSceneSummary(isEn);
+        const textInImage = state.textInImage.trim();
+        const negative = state.negative.trim();
+        const ratioObj = ASPECT_RATIOS.find(r => r.id === state.ratio);
+
+        const styles = getSelectedItems('style').map(i => isEn ? i.en : i.label);
+        const comps = getSelectedItems('composition').map(i => isEn ? i.en : i.label);
+        const lights = getSelectedItems('lighting').map(i => isEn ? i.en : i.label);
+        const moods = getSelectedItems('mood').map(i => isEn ? i.en : i.label);
+        const colors = getSelectedItems('color').map(i => isEn ? i.en : i.label);
+        const quals = getSelectedItems('quality').map(i => isEn ? i.en : i.label);
+
+        const hasAnything = Boolean(
+          subject || charsText || sceneText || textInImage || negative ||
+          (ratioObj && ratioObj.id) ||
+          styles.length || comps.length || lights.length || moods.length || colors.length || quals.length
+        );
+        if (!hasAnything) return '';
+
+        // 1) Gemini 向け（自然な情景描写）
+        if (state.ai === 'gemini') {
+          if (isEn) {
+            const sentences = [];
+            let lead = '';
+            if (styles.length) lead += `Create an image in ${styles.join(', ')}`;
+            else lead += 'Create a high-quality image';
+
+            const mainSubjects = [subject, charsText].filter(Boolean).join(', featuring ');
+            if (mainSubjects) lead += ` depicting ${mainSubjects}`;
+            if (sceneText) lead += `, ${sceneText}`;
+            sentences.push(lead + '.');
+
+            const tech = [];
+            if (comps.length) tech.push(`Composition and camera: ${comps.join(', ')}`);
+            if (lights.length) tech.push(`Lighting: ${lights.join(', ')}`);
+            if (moods.length) tech.push(`Atmosphere: ${moods.join(', ')}`);
+            if (colors.length) tech.push(`Color palette: ${colors.join(', ')}`);
+            if (quals.length) tech.push(`Details and quality: ${quals.join(', ')}`);
+            if (tech.length) sentences.push(tech.join('. ') + '.');
+
+            if (textInImage) sentences.push(`Include the exact clearly legible text "${textInImage}" integrated naturally into the scene.`);
+            if (ratioObj && ratioObj.id) sentences.push(`Aspect ratio: ${ratioObj.en}.`);
+            if (negative) sentences.push(`Avoid: ${negative}.`);
+            return sentences.join(' ');
+          } else {
+            const lines = [];
+            const mainDesc = [subject, charsText].filter(Boolean).join('。');
+            lines.push(mainDesc ? `${mainDesc}の画像を生成してください。` : '以下の条件で高品質な画像を生成してください。');
+            if (sceneText) lines.push(`シーン設定：${sceneText}。`);
+            if (styles.length) lines.push(`画風は${styles.join('、')}で表現してください。`);
+            if (comps.length) lines.push(`構図・カメラは${comps.join('、')}を採用してください。`);
+            if (lights.length) lines.push(`ライティングは${lights.join('、')}を意識してください。`);
+            if (moods.length) lines.push(`全体の雰囲気は${moods.join('、')}にしてください。`);
+            if (colors.length) lines.push(`色彩は${colors.join('、')}を基調としてください。`);
+            if (quals.length) lines.push(`仕上がりは${quals.join('、')}で描写してください。`);
+            if (textInImage) lines.push(`画像内に「${textInImage}」という文字を正確かつ自然に配置してください。`);
+            if (ratioObj && ratioObj.id) lines.push(`アスペクト比は${ratioObj.label}（${ratioObj.desc}）にしてください。`);
+            if (negative) lines.push(`避けたい要素：${negative}は含めないでください。`);
+            return lines.join('\n');
+          }
+        }
+
+        // 2) ChatGPT 向け（構造化された明快な指示）
+        if (state.ai === 'chatgpt') {
+          if (isEn) {
+            const lines = ['Please generate an image with the following specifications:'];
+            if (subject) lines.push(`- Subject / Scene: ${subject}`);
+            if (charsText) lines.push(`- Characters: ${charsText}`);
+            if (sceneText) lines.push(`- Setting: ${sceneText}`);
+            if (styles.length) lines.push(`- Art Style: ${styles.join(', ')}`);
+            if (comps.length) lines.push(`- Composition & Camera: ${comps.join(', ')}`);
+            if (lights.length) lines.push(`- Lighting: ${lights.join(', ')}`);
+            if (moods.length) lines.push(`- Mood: ${moods.join(', ')}`);
+            if (colors.length) lines.push(`- Color Tone: ${colors.join(', ')}`);
+            if (quals.length) lines.push(`- Quality & Details: ${quals.join(', ')}`);
+            if (textInImage) lines.push(`- Text in Image: Render the exact text "${textInImage}" clearly and accurately.`);
+            if (ratioObj && ratioObj.id) lines.push(`- Aspect Ratio: ${ratioObj.en}`);
+            if (negative) lines.push(`- Avoid: ${negative}`);
+            return lines.join('\n');
+          } else {
+            const lines = ['以下の条件で画像を生成してください。'];
+            if (subject) lines.push(`・被写体・シーン：${subject}`);
+            if (charsText) lines.push(`・人物設定：${charsText}`);
+            if (sceneText) lines.push(`・背景・日時・天候：${sceneText}`);
+            if (styles.length) lines.push(`・画風：${styles.join('、')}`);
+            if (comps.length) lines.push(`・構図・カメラ：${comps.join('、')}`);
+            if (lights.length) lines.push(`・光・照明：${lights.join('、')}`);
+            if (moods.length) lines.push(`・雰囲気：${moods.join('、')}`);
+            if (colors.length) lines.push(`・色彩：${colors.join('、')}`);
+            if (quals.length) lines.push(`・品質・ディテール：${quals.join('、')}`);
+            if (textInImage) lines.push(`・画像内の文字：「${textInImage}」と正確に表記してください`);
+            if (ratioObj && ratioObj.id) lines.push(`・アスペクト比：${ratioObj.label}（${ratioObj.desc}）`);
+            if (negative) lines.push(`・避けたい要素：${negative}`);
+            return lines.join('\n');
+          }
+        }
+
+        // 3) Grok 向け（質感・カメラ・ライティング重視のキーワード最適化）
+        if (isEn) {
+          const chunks = [];
+          if (subject) chunks.push(subject);
+          if (charsText) chunks.push(charsText);
+          if (sceneText) chunks.push(sceneText);
+          if (styles.length) chunks.push(...styles);
+          if (comps.length) chunks.push(...comps);
+          if (lights.length) chunks.push(...lights);
+          if (moods.length) chunks.push(...moods);
+          if (colors.length) chunks.push(...colors);
+          if (quals.length) chunks.push(...quals);
+          if (textInImage) chunks.push(`crisp visible text "${textInImage}"`);
+          if (ratioObj && ratioObj.id) chunks.push(`aspect ratio ${ratioObj.id}`);
+          let out = chunks.join(', ');
+          if (negative) out += ` --no ${negative}`;
+          return out;
+        } else {
+          const chunks = [];
+          if (subject) chunks.push(subject);
+          if (charsText) chunks.push(charsText);
+          if (sceneText) chunks.push(sceneText);
+          if (styles.length) chunks.push(...styles);
+          if (comps.length) chunks.push(...comps);
+          if (lights.length) chunks.push(...lights);
+          if (moods.length) chunks.push(...moods);
+          if (colors.length) chunks.push(...colors);
+          if (quals.length) chunks.push(...quals);
+          if (textInImage) chunks.push(`文字「${textInImage}」を鮮明に表示`);
+          if (ratioObj && ratioObj.id) chunks.push(`比率${ratioObj.label}`);
+          let out = chunks.join('、');
+          if (negative) out += `（除外：${negative}）`;
+          return out;
+        }
+      }
+
+      // =========================================================
+      // 4.5 事前警告（NGワード検知）エンジン
+      // =========================================================
+      function scanTextForFindings(text, sourceType, sourceMeta) {
+        if (!text || !text.trim()) return [];
+        const findings = [];
+        const lower = text.toLowerCase();
+
+        SAFETY_RULES.forEach(rule => {
+          let matchedWord = null;
+          let matchedLang = 'ja';
+
+          for (const w of rule.ja) {
+            if (text.includes(w)) {
+              matchedWord = w;
+              matchedLang = 'ja';
+              break;
+            }
+          }
+          if (!matchedWord) {
+            for (const w of rule.en) {
+              const re = new RegExp(`\\b${escapeRegex(w)}\\b`, 'i');
+              if (re.test(lower)) {
+                matchedWord = w;
+                matchedLang = 'en';
+                break;
+              }
+            }
+          }
+
+          if (matchedWord) {
+            findings.push({
+              rule,
+              matchedWord,
+              matchedLang,
+              sourceType,
+              sourceMeta
+            });
+          }
+        });
+        return findings;
+      }
+
+      function runSafetyCheck() {
+        if (!state.safetyCheckEnabled) return [];
+        const rawFindings = [];
+
+        // 1. 被写体・画像内文字・ネガティブ入力
+        if (state.subject) {
+          rawFindings.push(...scanTextForFindings(state.subject, 'subject', { sourceLabel: '被写体入力' }));
+        }
+        if (state.textInImage) {
+          rawFindings.push(...scanTextForFindings(state.textInImage, 'textInImage', { sourceLabel: '画像内テキスト' }));
+        }
+
+        // 2. 選択中のカテゴリータグ
+        CATEGORIES.forEach(cat => {
+          getSelectedItems(cat.id).forEach(item => {
+            const meta = { sourceLabel: `${cat.shortName}「${item.label}」`, catId: cat.id, itemId: item.id };
+            const jaHits = scanTextForFindings(item.label, 'tag', meta);
+            const enHits = item.en ? scanTextForFindings(item.en, 'tag', meta) : [];
+            const merged = [...jaHits];
+            enHits.forEach(h => { if (!merged.some(m => m.rule.id === h.rule.id)) merged.push(h); });
+            rawFindings.push(...merged);
+          });
+        });
+
+        // 2.5 人物設定（カスタム入力＆選択チップ）
+        state.characters.forEach((char, idx) => {
+          const num = idx + 1;
+          [
+            { key: 'raceCustom', label: `人物${num}・種族` },
+            { key: 'styleCustom', label: `人物${num}・スタイル` },
+            { key: 'outfitCustom', label: `人物${num}・服装` },
+            { key: 'poseCustom', label: `人物${num}・姿勢` },
+            { key: 'propsCustom', label: `人物${num}・小物` },
+            { key: 'action', label: `人物${num}・表情/動作` }
+          ].forEach(f => {
+            if (char[f.key]) {
+              rawFindings.push(...scanTextForFindings(char[f.key], 'char_text', {
+                sourceLabel: f.label,
+                charIndex: idx,
+                field: f.key
+              }));
+            }
+          });
+
+          const chipChecks = [];
+          const raceObj = getFieldItems('race').find(r => r.id === char.race);
+          if (raceObj) chipChecks.push({ field: 'race', obj: raceObj, fieldLabel: '種族' });
+          (char.styles || []).forEach(sid => {
+            const sObj = getFieldItems('styles').find(s => s.id === sid);
+            if (sObj) chipChecks.push({ field: 'styles', obj: sObj, fieldLabel: 'スタイル' });
+          });
+          const outfitObj = getFieldItems('outfit').find(o => o.id === char.outfit);
+          if (outfitObj) chipChecks.push({ field: 'outfit', obj: outfitObj, fieldLabel: '服装' });
+          const poseObj = getFieldItems('pose').find(p => p.id === char.pose);
+          if (poseObj) chipChecks.push({ field: 'pose', obj: poseObj, fieldLabel: '姿勢' });
+          (char.props || []).forEach(pid => {
+            const pObj = getFieldItems('props').find(p => p.id === pid);
+            if (pObj) chipChecks.push({ field: 'props', obj: pObj, fieldLabel: '小物' });
+          });
+
+          chipChecks.forEach(({ field, obj, fieldLabel }) => {
+            const meta = {
+              sourceLabel: `人物${num}の${fieldLabel}「${obj.label}」`,
+              charIndex: idx,
+              field,
+              chipId: obj.id
+            };
+            const jaHits = scanTextForFindings(obj.label, 'char_chip', meta);
+            const enHits = obj.en ? scanTextForFindings(obj.en, 'char_chip', meta) : [];
+            const merged = [...jaHits];
+            enHits.forEach(h => { if (!merged.some(m => m.rule.id === h.rule.id)) merged.push(h); });
+            rawFindings.push(...merged);
+          });
+        });
+
+        // 2.6 複数人設定
+        if (state.characters.length >= 2) {
+          [
+            { key: 'arrangementCustom', label: '複数人・配置カスタム' },
+            { key: 'interactionCustom', label: '複数人・体勢カスタム' }
+          ].forEach(f => {
+            if (state.groupRelation[f.key]) {
+              rawFindings.push(...scanTextForFindings(state.groupRelation[f.key], 'group_text', {
+                sourceLabel: f.label,
+                field: f.key
+              }));
+            }
+          });
+
+          const groupChipChecks = [];
+          const arrObj = getFieldItems('arrangement').find(a => a.id === state.groupRelation.arrangement);
+          if (arrObj) groupChipChecks.push({ field: 'arrangement', obj: arrObj, fieldLabel: '複数人の配置' });
+          const intObj = getFieldItems('interaction').find(i => i.id === state.groupRelation.interaction);
+          if (intObj) groupChipChecks.push({ field: 'interaction', obj: intObj, fieldLabel: '複数人の体勢' });
+
+          groupChipChecks.forEach(({ field, obj, fieldLabel }) => {
+            const meta = {
+              sourceLabel: `${fieldLabel}「${obj.label}」`,
+              field,
+              chipId: obj.id
+            };
+            const jaHits = scanTextForFindings(obj.label, 'group_chip', meta);
+            const enHits = obj.en ? scanTextForFindings(obj.en, 'group_chip', meta) : [];
+            const merged = [...jaHits];
+            enHits.forEach(h => { if (!merged.some(m => m.rule.id === h.rule.id)) merged.push(h); });
+            rawFindings.push(...merged);
+          });
+        }
+
+        // 2.7 シーン設定
+        [
+          { key: 'backgroundCustom', label: 'シーン・背景' },
+          { key: 'timeCustom', label: 'シーン・日時' },
+          { key: 'weatherCustom', label: 'シーン・天候' }
+        ].forEach(f => {
+          if (state.scene[f.key]) {
+            rawFindings.push(...scanTextForFindings(state.scene[f.key], 'scene_text', {
+              sourceLabel: f.label,
+              field: f.key
+            }));
+          }
+        });
+
+        const sceneChipChecks = [];
+        const bgObj = getFieldItems('background').find(b => b.id === state.scene.background);
+        if (bgObj) sceneChipChecks.push({ field: 'background', obj: bgObj, fieldLabel: '背景' });
+        const tmObj = getFieldItems('time').find(t => t.id === state.scene.time);
+        if (tmObj && tmObj.id) sceneChipChecks.push({ field: 'time', obj: tmObj, fieldLabel: '時間帯' });
+        (state.scene.weathers || []).forEach(wid => {
+          const wObj = getFieldItems('weathers').find(w => w.id === wid);
+          if (wObj) sceneChipChecks.push({ field: 'weathers', obj: wObj, fieldLabel: '季節・天候' });
+        });
+
+        sceneChipChecks.forEach(({ field, obj, fieldLabel }) => {
+          const meta = {
+            sourceLabel: `シーンの${fieldLabel}「${obj.label}」`,
+            field,
+            chipId: obj.id
+          };
+          const jaHits = scanTextForFindings(obj.label, 'scene_chip', meta);
+          const enHits = obj.en ? scanTextForFindings(obj.en, 'scene_chip', meta) : [];
+          const merged = [...jaHits];
+          enHits.forEach(h => { if (!merged.some(m => m.rule.id === h.rule.id)) merged.push(h); });
+          rawFindings.push(...merged);
+        });
+
+        return rawFindings;
+      }
+
+      function updateSafetyToggleUI() {
+        const on = state.safetyCheckEnabled;
+        dom.btnSafetyToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+        if (on) {
+          dom.btnSafetyToggle.className = 'px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+          dom.safetyToggleDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+        } else {
+          dom.btnSafetyToggle.className = 'px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 bg-zinc-200/70 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700';
+          dom.safetyToggleDot.className = 'w-1.5 h-1.5 rounded-full bg-zinc-400';
+        }
+      }
+
+      function renderSafetyUI(hasPrompt) {
+        if (!state.safetyCheckEnabled) {
+          dom.safetyWarningSection.classList.add('hidden');
+          dom.footerSafetyBadge.classList.add('hidden');
+          return;
+        }
+
+        const findings = runSafetyCheck();
+        if (findings.length === 0) {
+          dom.safetyWarningSection.classList.add('hidden');
+          if (hasPrompt) {
+            dom.footerSafetyBadge.classList.remove('hidden');
+            dom.footerSafetyBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+            dom.footerSafetyBadge.textContent = '✓ ポリシーチェック済';
+          } else {
+            dom.footerSafetyBadge.classList.add('hidden');
+          }
+          return;
+        }
+
+        const hasHigh = findings.some(f => f.rule.severity === 'high');
+        dom.safetyWarningSection.classList.remove('hidden');
+
+        if (hasHigh) {
+          dom.safetyWarningSection.className = 'rounded-2xl border overflow-hidden shadow-ios-card transition-all duration-200 bg-red-50/90 dark:bg-red-950/35 border-red-300/80 dark:border-red-800/70 text-red-900 dark:text-red-100';
+          dom.safetyBannerIcon.textContent = '🚫';
+          dom.safetyRiskBadge.textContent = 'リスク高';
+          dom.safetyRiskBadge.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-600 text-white';
+        } else {
+          dom.safetyWarningSection.className = 'rounded-2xl border overflow-hidden shadow-ios-card transition-all duration-200 bg-amber-50/90 dark:bg-amber-950/35 border-amber-300/80 dark:border-amber-800/70 text-amber-900 dark:text-amber-100';
+          dom.safetyBannerIcon.textContent = '⚠️';
+          dom.safetyRiskBadge.textContent = '注意';
+          dom.safetyRiskBadge.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500 text-white';
+        }
+
+        const adviceMap = {
+          gemini: 'Geminiは安全基準が厳格です。下の候補からマイルドな表現へ言い換えると生成が通りやすくなります。',
+          chatgpt: 'ChatGPTはポリシー違反に厳格です。下の言い換え提案をタップして調整することをおすすめします。',
+          grok: 'Grokは比較的表現の幅が広いですが、露骨な表現や過激な描写はブロックされる場合があります。'
+        };
+        dom.safetyAiAdvice.textContent = adviceMap[state.ai] || adviceMap.gemini;
+
+        dom.safetyBannerBody.classList.toggle('open', state.safetyBannerOpen);
+        dom.btnToggleSafetyBanner.setAttribute('aria-expanded', state.safetyBannerOpen ? 'true' : 'false');
+        dom.safetyBannerChevron.classList.toggle('rotate-180', state.safetyBannerOpen);
+
+        // 下部バーの警告バッジ
+        dom.footerSafetyBadge.classList.remove('hidden');
+        dom.footerSafetyBadge.className = hasHigh
+          ? 'px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition active:scale-95 bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 cursor-pointer'
+          : 'px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition active:scale-95 bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 cursor-pointer';
+        dom.footerSafetyBadge.textContent = `${hasHigh ? '🚫' : '⚠️'} 要確認 ${findings.length}件`;
+
+        // 検知リスト描画
+        dom.safetyFindingsList.innerHTML = '';
+        findings.forEach((f, idx) => {
+          const itemEl = document.createElement('div');
+          itemEl.className = 'p-2.5 rounded-xl bg-white/75 dark:bg-zinc-900/70 border border-black/5 dark:border-white/10 space-y-2';
+
+          const headerRow = document.createElement('div');
+          headerRow.className = 'flex items-center justify-between gap-2 flex-wrap';
+
+          const labelWrap = document.createElement('div');
+          labelWrap.className = 'text-xs font-semibold flex items-center gap-1.5 flex-wrap';
+          labelWrap.innerHTML = `
+            <span class="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 text-[10px] font-bold">${escapeHtml(f.rule.category)}</span>
+            <span>「<strong class="underline decoration-dotted">${escapeHtml(f.matchedWord)}</strong>」</span>
+            <span class="text-[10px] opacity-70">（${escapeHtml(f.sourceMeta.sourceLabel)}）</span>
+          `;
+          headerRow.appendChild(labelWrap);
+
+          if (f.sourceType === 'tag') {
+            const removeTagBtn = document.createElement('button');
+            removeTagBtn.type = 'button';
+            removeTagBtn.dataset.removeTagCat = f.sourceMeta.catId;
+            removeTagBtn.dataset.removeTagId = f.sourceMeta.itemId;
+            removeTagBtn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-500/15 text-red-600 dark:text-red-300 hover:bg-red-500/25 active:scale-95 transition';
+            removeTagBtn.textContent = 'このタグを外す';
+            headerRow.appendChild(removeTagBtn);
+          }
+
+          if (f.sourceType === 'char_chip') {
+            const removeCharChipBtn = document.createElement('button');
+            removeCharChipBtn.type = 'button';
+            removeCharChipBtn.dataset.removeCharIdx = String(f.sourceMeta.charIndex);
+            removeCharChipBtn.dataset.removeCharField = f.sourceMeta.field;
+            removeCharChipBtn.dataset.removeCharChipId = f.sourceMeta.chipId;
+            removeCharChipBtn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-500/15 text-red-600 dark:text-red-300 hover:bg-red-500/25 active:scale-95 transition';
+            removeCharChipBtn.textContent = 'このラベルを外す';
+            headerRow.appendChild(removeCharChipBtn);
+          }
+
+          if (f.sourceType === 'group_chip' || f.sourceType === 'scene_chip') {
+            const removeFieldChipBtn = document.createElement('button');
+            removeFieldChipBtn.type = 'button';
+            removeFieldChipBtn.dataset.removeFieldType = f.sourceType;
+            removeFieldChipBtn.dataset.removeFieldName = f.sourceMeta.field;
+            removeFieldChipBtn.dataset.removeFieldChipId = f.sourceMeta.chipId;
+            removeFieldChipBtn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-500/15 text-red-600 dark:text-red-300 hover:bg-red-500/25 active:scale-95 transition';
+            removeFieldChipBtn.textContent = 'このラベルを外す';
+            headerRow.appendChild(removeFieldChipBtn);
+          }
+
+          itemEl.appendChild(headerRow);
+
+          // テキスト入力由来の場合はワンタップ言い換え提案を表示
+          if (['subject', 'textInImage', 'char_text', 'group_text', 'scene_text'].includes(f.sourceType)) {
+            const sugWrap = document.createElement('div');
+            sugWrap.className = 'flex flex-wrap items-center gap-1.5';
+            const hintSpan = document.createElement('span');
+            hintSpan.className = 'text-[10px] font-semibold opacity-70 mr-0.5';
+            hintSpan.textContent = '言い換え提案：';
+            sugWrap.appendChild(hintSpan);
+
+            f.rule.suggestions.forEach((sug, sIdx) => {
+              const replacementText = f.matchedLang === 'en' ? sug.en : sug.ja;
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.dataset.replaceSource = f.sourceType;
+              btn.dataset.replaceWord = f.matchedWord;
+              btn.dataset.replaceWith = replacementText;
+              if (f.sourceMeta.charIndex !== undefined) btn.dataset.replaceCharIdx = String(f.sourceMeta.charIndex);
+              if (f.sourceMeta.field) btn.dataset.replaceField = f.sourceMeta.field;
+              btn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 hover:bg-emerald-500/25 active:scale-95 transition';
+              btn.textContent = `→ ${sug.ja}`;
+              sugWrap.appendChild(btn);
+            });
+            itemEl.appendChild(sugWrap);
+          }
+
+          dom.safetyFindingsList.appendChild(itemEl);
+        });
+      }
+
+      // =========================================================
+      // 5. UIレンダリング関数群
+      // =========================================================
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // プリセット＆カスタムラベル共通チップHTML生成ヘルパー
+      function buildLabelChipHtml(item, isSelected, dataAttr, groupKey, cfg) {
+        const chipBase = 'px-3 py-1.5 rounded-xl text-xs font-medium border transition-all active:scale-95 select-none';
+        const chipIdle = 'bg-zinc-50 dark:bg-zinc-950/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700';
+
+        if (item.isCustom) {
+          const wrapCls = isSelected
+            ? cfg.activeChip
+            : 'bg-zinc-50 dark:bg-zinc-950/70 text-zinc-700 dark:text-zinc-200 border-zinc-400/80 dark:border-zinc-600';
+          const delCls = isSelected ? 'text-white/80 hover:text-white' : 'text-zinc-400 hover:text-red-500';
+          return `
+            <div class="inline-flex items-center rounded-xl border border-dashed transition-all duration-150 select-none overflow-hidden ${wrapCls}">
+              <button type="button" ${dataAttr}="${item.id}" class="pl-2.5 pr-1 py-1.5 text-xs font-medium flex items-center gap-1 active:opacity-75">
+                <span class="text-[10px] opacity-80">✦</span><span>${escapeHtml(item.label)}</span>
+              </button>
+              <button type="button" data-del-label-group="${groupKey}" data-del-label-id="${item.id}" aria-label="${escapeHtml(item.label)}を削除"
+                class="pr-2 pl-1 py-1.5 text-xs font-bold transition active:scale-90 ${delCls}">×</button>
+            </div>
+          `;
+        }
+        return `<button type="button" ${dataAttr}="${item.id}" class="${chipBase} ${isSelected ? cfg.activeChip : chipIdle}">${escapeHtml(item.label)}</button>`;
+      }
+
+      function buildAddLabelBtnHtml(groupKey, title) {
+        return `<button type="button" data-open-add-label="${groupKey}" data-open-add-title="${escapeHtml(title)}"
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:border-zinc-400 dark:hover:border-zinc-500 active:scale-95 transition inline-flex items-center gap-1 select-none">
+          <span>＋ 追加</span>
+        </button>`;
+      }
+
+      // 人物設定セクション描画（最大3人・タブ切替）
+      function renderCharactersSection() {
+        const cfg = AI_CONFIG[state.ai];
+        const count = state.characters.length;
+
+        dom.charCountBadge.textContent = `${count}/3`;
+        dom.btnAddCharacterHeader.className = `inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-white active:scale-95 transition shadow-sm ${cfg.submitBtn} ${count >= 3 ? 'opacity-40 pointer-events-none' : ''}`;
+        dom.btnAddCharacterHeader.disabled = count >= 3;
+
+        if (count === 0) {
+          dom.charEmptyState.classList.remove('hidden');
+          dom.charEditorWrap.classList.add('hidden');
+          return;
+        }
+
+        if (state.activeCharacterIndex >= count) state.activeCharacterIndex = count - 1;
+        dom.charEmptyState.classList.add('hidden');
+        dom.charEditorWrap.classList.remove('hidden');
+
+        // 人物切替タブ描画
+        dom.charTabsBar.innerHTML = state.characters.map((ch, idx) => {
+          const isActive = idx === state.activeCharacterIndex;
+          const gObj = CHARACTER_PRESETS.genders.find(g => g.id === ch.gender);
+          const gText = gObj && gObj.id ? gObj.label : '未指定';
+          return `
+            <div class="shrink-0 inline-flex items-center rounded-xl border transition-all overflow-hidden ${isActive ? cfg.activeTab + ' border-transparent' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200/80 dark:border-zinc-800'}">
+              <button type="button" data-select-char="${idx}" class="pl-3 pr-1.5 py-1.5 text-xs font-bold active:opacity-80">
+                人物${idx + 1}: ${escapeHtml(gText)}
+              </button>
+              <button type="button" data-remove-char="${idx}" aria-label="人物${idx + 1}を削除"
+                class="pr-2.5 pl-1 py-1.5 text-xs font-bold active:scale-90 ${isActive ? 'text-white/80 hover:text-white' : 'text-zinc-400 hover:text-red-500'}">×</button>
+            </div>
+          `;
+        }).join('');
+
+        // 選択中の人物フォーム描画
+        const char = state.characters[state.activeCharacterIndex];
+        const chipIdle = 'bg-zinc-50 dark:bg-zinc-950/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700';
+
+        const genderHtml = CHARACTER_PRESETS.genders.map(g => {
+          const active = char.gender === g.id;
+          return `<button type="button" data-char-gender="${g.id}" class="py-2 px-2 rounded-xl text-xs font-bold border transition-all active:scale-95 ${active ? cfg.activeChip : chipIdle}">${escapeHtml(g.label)}</button>`;
+        }).join('');
+
+        const raceHtml = getFieldItems('race').map(r =>
+          buildLabelChipHtml(r, char.race === r.id, 'data-char-race', 'race', cfg)
+        ).join('') + buildAddLabelBtnHtml('race', '種族');
+
+        const styleHtml = getFieldItems('styles').map(s =>
+          buildLabelChipHtml(s, (char.styles || []).includes(s.id), 'data-char-style', 'styles', cfg)
+        ).join('') + buildAddLabelBtnHtml('styles', 'スタイル・髪型');
+
+        const outfitHtml = getFieldItems('outfit').map(o =>
+          buildLabelChipHtml(o, char.outfit === o.id, 'data-char-outfit', 'outfit', cfg)
+        ).join('') + buildAddLabelBtnHtml('outfit', '服装');
+
+        const poseHtml = getFieldItems('pose').map(p =>
+          buildLabelChipHtml(p, char.pose === p.id, 'data-char-pose', 'pose', cfg)
+        ).join('') + buildAddLabelBtnHtml('pose', '姿勢・ポーズ');
+
+        const propHtml = getFieldItems('props').map(p =>
+          buildLabelChipHtml(p, (char.props || []).includes(p.id), 'data-char-prop', 'props', cfg)
+        ).join('') + buildAddLabelBtnHtml('props', '持たせる小物');
+
+        const positionBlock = count >= 2 ? `
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">画面内の立ち位置 <span class="text-[10px] font-normal text-zinc-400">複数人時</span></span>
+            <div class="flex flex-wrap gap-1.5">
+              ${CHARACTER_PRESETS.positions.map(pos => {
+                const active = (char.position || '') === pos.id;
+                return `<button type="button" data-char-pos="${pos.id}" class="px-3 py-1.5 rounded-xl text-xs font-medium border transition-all active:scale-95 ${active ? cfg.activeChip : chipIdle}">${escapeHtml(pos.label)}</button>`;
+              }).join('')}
+            </div>
+          </div>
+        ` : '';
+
+        dom.charActiveForm.innerHTML = `
+          <!-- メイン：性別 -->
+          <div class="space-y-2">
+            <span class="block text-xs font-bold text-zinc-700 dark:text-zinc-200">性別 <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">メイン</span></span>
+            <div class="grid grid-cols-3 gap-1.5">${genderHtml}</div>
+          </div>
+
+          <!-- サブ：種族 -->
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">種族</span>
+            <div class="flex flex-wrap gap-1.5">${raceHtml}</div>
+            <input type="text" data-char-input="raceCustom" value="${escapeHtml(char.raceCustom || '')}" placeholder="カスタム種族（例：竜人、魔法使い）"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+
+          <!-- サブ：スタイル・髪型 -->
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">スタイル・髪型 <span class="text-[10px] font-normal text-zinc-400">複数選択可</span></span>
+            <div class="flex flex-wrap gap-1.5">${styleHtml}</div>
+            <input type="text" data-char-input="styleCustom" value="${escapeHtml(char.styleCustom || '')}" placeholder="カスタム外見（例：金髪ツインテール、碧眼）"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+
+          <!-- サブ：服装 -->
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">服装</span>
+            <div class="flex flex-wrap gap-1.5">${outfitHtml}</div>
+            <input type="text" data-char-input="outfitCustom" value="${escapeHtml(char.outfitCustom || '')}" placeholder="カスタム服装（例：白いトレンチコート）"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+
+          <!-- サブ：姿勢・ポーズ -->
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">姿勢・ポーズ</span>
+            <div class="flex flex-wrap gap-1.5">${poseHtml}</div>
+            <input type="text" data-char-input="poseCustom" value="${escapeHtml(char.poseCustom || '')}" placeholder="カスタム姿勢（例：窓辺に肘をつく）"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+
+          <!-- サブ：持たせる小物 -->
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">持たせる小物 <span class="text-[10px] font-normal text-zinc-400">複数選択可</span></span>
+            <div class="flex flex-wrap gap-1.5">${propHtml}</div>
+            <input type="text" data-char-input="propsCustom" value="${escapeHtml(char.propsCustom || '')}" placeholder="カスタム小物（例：アンティークの懐中時計）"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+
+          <!-- サブ：表情・アクション -->
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-1.5">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">表情・アクション <span class="text-[10px] font-normal text-zinc-400">任意</span></span>
+            <input type="text" data-char-input="action" value="${escapeHtml(char.action || '')}" placeholder="例：優しく微笑んでいる、遠くを見つめる"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+
+          ${positionBlock}
+        `;
+
+        // 複数人（2人以上）の位置関係・体勢パネル描画
+        if (count >= 2) {
+          dom.groupRelationPanel.classList.remove('hidden');
+          const gr = state.groupRelation;
+          const arrHtml = getFieldItems('arrangement').map(a =>
+            buildLabelChipHtml(a, gr.arrangement === a.id, 'data-group-arr', 'arrangement', cfg)
+          ).join('') + buildAddLabelBtnHtml('arrangement', '配置・位置関係');
+          const intHtml = getFieldItems('interaction').map(i =>
+            buildLabelChipHtml(i, gr.interaction === i.id, 'data-group-int', 'interaction', cfg)
+          ).join('') + buildAddLabelBtnHtml('interaction', '体勢・絡み/ポーズ');
+
+          dom.groupRelationPanel.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-zinc-800 dark:text-zinc-100">複数人の位置関係・体勢</span>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">${count}人設定中</span>
+            </div>
+
+            <div class="space-y-2">
+              <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">配置・位置関係</span>
+              <div class="flex flex-wrap gap-1.5">${arrHtml}</div>
+              <input type="text" data-group-input="arrangementCustom" value="${escapeHtml(gr.arrangementCustom || '')}" placeholder="カスタム配置（例：テーブルを挟んで向かい合う）"
+                class="w-full text-base rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+            </div>
+
+            <div class="pt-3 border-t border-zinc-200/60 dark:border-zinc-800/80 space-y-2">
+              <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">体勢・絡み/ポーズ</span>
+              <div class="flex flex-wrap gap-1.5">${intHtml}</div>
+              <input type="text" data-group-input="interactionCustom" value="${escapeHtml(gr.interactionCustom || '')}" placeholder="カスタム体勢（例：笑い合いながらコーヒーを掲げる）"
+                class="w-full text-base rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+            </div>
+          `;
+        } else {
+          dom.groupRelationPanel.classList.add('hidden');
+        }
+      }
+
+      function updateSceneBadgesOnly() {
+        const cfg = AI_CONFIG[state.ai];
+        const sc = state.scene;
+        const badges = [];
+        const bgObj = getFieldItems('background').find(b => b.id === sc.background);
+        if (bgObj) badges.push(bgObj.label);
+        if ((sc.backgroundCustom || '').trim()) badges.push(sc.backgroundCustom.trim());
+        const tmObj = getFieldItems('time').find(t => t.id === sc.time);
+        if (tmObj && tmObj.id) badges.push(tmObj.label);
+        if ((sc.timeCustom || '').trim()) badges.push(sc.timeCustom.trim());
+        (sc.weathers || []).forEach(wid => {
+          const wObj = getFieldItems('weathers').find(w => w.id === wid);
+          if (wObj) badges.push(wObj.label);
+        });
+        if ((sc.weatherCustom || '').trim()) badges.push(sc.weatherCustom.trim());
+
+        if (badges.length > 0) {
+          dom.sceneCountBadge.textContent = String(badges.length);
+          dom.sceneCountBadge.className = `text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${cfg.badgeBg}`;
+          dom.sceneSummaryBadges.classList.remove('hidden');
+          dom.sceneSummaryBadges.innerHTML = badges.map(b =>
+            `<span class="px-2 py-0.5 rounded-md text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">${escapeHtml(b)}</span>`
+          ).join('');
+        } else {
+          dom.sceneCountBadge.classList.add('hidden');
+          dom.sceneSummaryBadges.classList.add('hidden');
+          dom.sceneSummaryBadges.innerHTML = '';
+        }
+      }
+
+      // シーン設定セクション描画
+      function renderSceneSection() {
+        const cfg = AI_CONFIG[state.ai];
+        const sc = state.scene;
+
+        updateSceneBadgesOnly();
+
+        dom.sceneBody.classList.toggle('open', sc.open);
+        dom.btnToggleScene.setAttribute('aria-expanded', sc.open ? 'true' : 'false');
+        dom.sceneChevron.classList.toggle('rotate-180', sc.open);
+
+        const bgHtml = getFieldItems('background').map(b =>
+          buildLabelChipHtml(b, sc.background === b.id, 'data-scene-bg', 'background', cfg)
+        ).join('') + buildAddLabelBtnHtml('background', '背景・場所');
+
+        const timeHtml = getFieldItems('time').map(t =>
+          buildLabelChipHtml(t, (sc.time || '') === t.id, 'data-scene-time', 'time', cfg)
+        ).join('') + buildAddLabelBtnHtml('time', '時間帯・日時');
+
+        const weatherHtml = getFieldItems('weathers').map(w =>
+          buildLabelChipHtml(w, (sc.weathers || []).includes(w.id), 'data-scene-weather', 'weathers', cfg)
+        ).join('') + buildAddLabelBtnHtml('weathers', '季節・天候');
+
+        dom.sceneFormContainer.innerHTML = `
+          <!-- 背景・場所 -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-zinc-600 dark:text-zinc-300">背景・場所</span>
+              <button type="button" data-scene-clear="1" class="text-[11px] font-semibold text-zinc-400 hover:text-red-500 active:scale-95 transition">シーンをクリア</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5">${bgHtml}</div>
+            <input type="text" data-scene-input="backgroundCustom" value="${escapeHtml(sc.backgroundCustom || '')}" placeholder="カスタム背景を入力（例：夕暮れの屋上、秘密基地）"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+
+          <!-- 時間帯・日時 -->
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">時間帯・日時</span>
+            <div class="flex flex-wrap gap-1.5">${timeHtml}</div>
+            <input type="text" data-scene-input="timeCustom" value="${escapeHtml(sc.timeCustom || '')}" placeholder="カスタム日時を入力（例：クリスマス・イブの夜、1980年代）"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+
+          <!-- 季節・天候 -->
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+            <span class="block text-xs font-bold text-zinc-600 dark:text-zinc-300">季節・天候 <span class="text-[10px] font-normal text-zinc-400">複数選択可</span></span>
+            <div class="flex flex-wrap gap-1.5">${weatherHtml}</div>
+            <input type="text" data-scene-input="weatherCustom" value="${escapeHtml(sc.weatherCustom || '')}" placeholder="カスタム季節・天候を入力（例：通り雨の直後の虹）"
+              class="w-full text-base rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+          </div>
+        `;
+      }
+
+      // アスペクト比ボタン描画
+      function renderRatios() {
+        const cfg = AI_CONFIG[state.ai];
+        dom.ratioContainer.innerHTML = '';
+        const currentObj = ASPECT_RATIOS.find(r => r.id === state.ratio) || ASPECT_RATIOS[0];
+        dom.ratioLabel.textContent = currentObj.id ? `${currentObj.label}（${currentObj.desc}）` : '指定なし';
+
+        ASPECT_RATIOS.forEach(r => {
+          const isSelected = state.ratio === r.id;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.ratio = r.id;
+          btn.className = [
+            'py-2 px-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 flex flex-col items-center justify-center',
+            isSelected
+              ? cfg.activeChip
+              : 'bg-zinc-50 dark:bg-zinc-950/60 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+          ].join(' ');
+          btn.innerHTML = `<span>${r.label}</span>`;
+          dom.ratioContainer.appendChild(btn);
+        });
+      }
+
+      // 選択中の全タグサマリー描画
+      function renderSelectedSummary() {
+        const allSelected = [];
+        CATEGORIES.forEach(cat => {
+          const items = getSelectedItems(cat.id);
+          items.forEach(item => {
+            allSelected.push({ catId: cat.id, item });
+          });
+        });
+
+        const total = allSelected.length;
+        if (total === 0) {
+          dom.selectedSummarySection.classList.add('hidden');
+          return;
+        }
+
+        const cfg = AI_CONFIG[state.ai];
+        dom.selectedSummarySection.classList.remove('hidden');
+        dom.selectedTotalBadge.textContent = String(total);
+        dom.selectedTotalBadge.className = `text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${cfg.badgeBg}`;
+
+        dom.selectedSummaryChips.innerHTML = '';
+        allSelected.forEach(({ catId, item }) => {
+          const pill = document.createElement('button');
+          pill.type = 'button';
+          pill.dataset.unselectCat = catId;
+          pill.dataset.unselectId = item.id;
+          pill.className = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700/80 active:scale-95 transition';
+          pill.innerHTML = `
+            <span>${escapeHtml(item.label)}</span>
+            <span class="text-zinc-400 hover:text-zinc-700 dark:hover:text-white text-[13px] leading-none ml-0.5">×</span>
+          `;
+          dom.selectedSummaryChips.appendChild(pill);
+        });
+      }
+
+      // 横スクロールカテゴリータブ描画
+      function renderCategoryTabs() {
+        const cfg = AI_CONFIG[state.ai];
+        dom.categoryTabs.innerHTML = '';
+
+        CATEGORIES.forEach(cat => {
+          const isActive = state.activeCategory === cat.id;
+          const count = (state.selected[cat.id] || []).length;
+
+          const tab = document.createElement('button');
+          tab.type = 'button';
+          tab.role = 'tab';
+          tab.dataset.tabCat = cat.id;
+          tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+          tab.className = [
+            'shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5',
+            isActive
+              ? cfg.activeTab
+              : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200'
+          ].join(' ');
+
+          const badgeHtml = count > 0
+            ? `<span class="min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${isActive ? 'bg-white/25 text-white' : cfg.badgeBg + ' text-white'}">${count}</span>`
+            : '';
+
+          tab.innerHTML = `<span>${cat.shortName}</span>${badgeHtml}`;
+          dom.categoryTabs.appendChild(tab);
+        });
+      }
+
+      // アクティブカテゴリー内のチップ描画
+      function renderActiveCategoryPanel() {
+        const cat = CATEGORIES.find(c => c.id === state.activeCategory) || CATEGORIES[0];
+        const cfg = AI_CONFIG[state.ai];
+        const selectedIds = state.selected[cat.id] || [];
+        const items = getCategoryItems(cat.id);
+        const hasCustoms = (state.customWords[cat.id] || []).length > 0;
+
+        dom.activeCatTitle.textContent = cat.title;
+        dom.addWordCatName.textContent = cat.title;
+        dom.btnClearActiveCat.classList.toggle('hidden', selectedIds.length === 0);
+        dom.customWordHint.classList.toggle('hidden', !hasCustoms);
+        dom.btnSubmitAddWord.className = `px-4 py-2 rounded-xl text-xs font-bold text-white active:scale-95 transition shadow-sm ${cfg.submitBtn}`;
+
+        dom.activeCatChips.innerHTML = '';
+
+        items.forEach(item => {
+          const isSelected = selectedIds.includes(item.id);
+          const isCustom = Boolean(item.isCustom);
+
+          if (isCustom) {
+            const wrapper = document.createElement('div');
+            wrapper.className = [
+              'inline-flex items-center rounded-xl border border-dashed transition-all duration-150 select-none overflow-hidden',
+              isSelected
+                ? cfg.activeChip
+                : 'bg-zinc-50 dark:bg-zinc-950/70 text-zinc-700 dark:text-zinc-200 border-zinc-400/80 dark:border-zinc-600'
+            ].join(' ');
+
+            const mainBtn = document.createElement('button');
+            mainBtn.type = 'button';
+            mainBtn.dataset.chipCat = cat.id;
+            mainBtn.dataset.chipId = item.id;
+            mainBtn.className = 'pl-3 pr-1.5 py-2 text-xs sm:text-[13px] font-medium flex items-center gap-1 active:opacity-75';
+            mainBtn.innerHTML = `<span class="text-[10px] opacity-80">✦</span><span>${escapeHtml(item.label)}</span>`;
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.dataset.delCustomCat = cat.id;
+            delBtn.dataset.delCustomId = item.id;
+            delBtn.setAttribute('aria-label', `${item.label}を削除`);
+            delBtn.className = [
+              'pr-2.5 pl-1 py-2 text-xs font-bold transition active:scale-90',
+              isSelected ? 'text-white/80 hover:text-white' : 'text-zinc-400 hover:text-red-500'
+            ].join(' ');
+            delBtn.textContent = '×';
+
+            wrapper.appendChild(mainBtn);
+            wrapper.appendChild(delBtn);
+            dom.activeCatChips.appendChild(wrapper);
+          } else {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.chipCat = cat.id;
+            btn.dataset.chipId = item.id;
+            btn.textContent = item.label;
+            btn.className = [
+              'px-3.5 py-2 rounded-xl text-xs sm:text-[13px] font-medium border transition-all duration-150 active:scale-95 select-none',
+              isSelected
+                ? cfg.activeChip
+                : 'bg-zinc-50 dark:bg-zinc-950/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+            ].join(' ');
+            dom.activeCatChips.appendChild(btn);
+          }
+        });
+      }
+
+      // AIテーマ全体の更新
+      function updateAIThemeUI() {
+        const cfg = AI_CONFIG[state.ai];
+
+        dom.aiTabs.forEach(tab => {
+          const isCurrent = tab.dataset.ai === state.ai;
+          tab.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+          tab.className = 'ai-tab py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-95 ' +
+            (isCurrent ? cfg.tabActiveClass : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200');
+        });
+
+        dom.aiHint.textContent = cfg.hint;
+        dom.appLogoBadge.className = `w-9 h-9 rounded-2xl flex items-center justify-center text-white shadow-sm transition-all duration-300 bg-gradient-to-br ${cfg.logoGradient}`;
+        dom.btnCopy.className = `flex-1 py-3.5 px-5 rounded-2xl font-bold text-sm sm:text-base text-white shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 bg-gradient-to-r ${cfg.copyGradient}`;
+        dom.previewAiBadge.textContent = cfg.name;
+        dom.previewAiBadge.className = `px-2 py-0.5 rounded-md text-[10px] font-bold text-white ${cfg.badgeBg}`;
+        dom.historyBadge.className = `absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white ${cfg.badgeBg} flex items-center justify-center shadow`;
+
+        updateHistoryBadge();
+        renderRatios();
+        renderCharactersSection();
+        renderSceneSection();
+        renderSelectedSummary();
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+        updatePreview();
+      }
+
+      function updateLangUI() {
+        dom.langBtns.forEach(btn => {
+          const isCurrent = btn.dataset.lang === state.lang;
+          btn.className = 'lang-btn px-2.5 py-1 rounded-md text-[11px] font-bold transition-all active:scale-95 ' +
+            (isCurrent
+              ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
+              : 'text-zinc-500 dark:text-zinc-400');
+        });
+        updatePreview();
+      }
+
+      function updatePreview() {
+        const prompt = buildPrompt();
+        if (prompt) {
+          dom.previewBox.textContent = prompt;
+          dom.previewBox.classList.remove('text-zinc-400', 'dark:text-zinc-500');
+          dom.previewBox.classList.add('text-zinc-800', 'dark:text-zinc-100');
+        } else {
+          dom.previewBox.textContent = '被写体を入力するか、カテゴリータブからタグを選んでください...';
+          dom.previewBox.classList.add('text-zinc-400', 'dark:text-zinc-500');
+          dom.previewBox.classList.remove('text-zinc-800', 'dark:text-zinc-100');
+        }
+        dom.previewCharCount.textContent = `${prompt.length}文字`;
+        dom.btnClearSubject.classList.toggle('hidden', state.subject.length === 0);
+
+        const hasOptions = state.negative.trim().length > 0;
+        dom.optionsActiveDot.classList.toggle('hidden', !hasOptions);
+
+        renderSafetyUI(Boolean(prompt));
+      }
+
+      function setAddWordFormOpen(open) {
+        state.addFormOpen = open;
+        dom.addWordFormWrap.classList.toggle('open', open);
+        dom.btnToggleAddWord.setAttribute('aria-expanded', open ? 'true' : 'false');
+        dom.addWordIcon.classList.toggle('rotate-45', open);
+        if (open) {
+          setTimeout(() => dom.customWordJa.focus(), 120);
+        }
+      }
+
+      // =========================================================
+      // 6. クリップボードコピー & トースト通知 & テーマ
+      // =========================================================
+      function copyTextToClipboard(text) {
+        return new Promise((resolve, reject) => {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.setAttribute('readonly', '');
+          textarea.style.position = 'fixed';
+          textarea.style.top = '0';
+          textarea.style.left = '0';
+          textarea.style.width = '2em';
+          textarea.style.height = '2em';
+          textarea.style.padding = '0';
+          textarea.style.border = 'none';
+          textarea.style.outline = 'none';
+          textarea.style.boxShadow = 'none';
+          textarea.style.background = 'transparent';
+          textarea.style.opacity = '0';
+          textarea.style.fontSize = '16px';
+          document.body.appendChild(textarea);
+
+          // PC Chrome・iPhone Safari 両対応のフォーカス＆全選択
+          textarea.focus({ preventScroll: true });
+          textarea.select();
+          textarea.setSelectionRange(0, text.length);
+
+          let success = false;
+          try {
+            success = document.execCommand('copy');
+          } catch (err) {
+            success = false;
+          }
+          document.body.removeChild(textarea);
+
+          if (success) {
+            resolve();
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(resolve).catch(reject);
+          } else {
+            reject(new Error('Copy failed'));
+          }
+        });
+      }
+
+      let toastTimer = null;
+      function showToast(message, icon = '✅') {
+        clearTimeout(toastTimer);
+        dom.toastIcon.textContent = icon;
+        dom.toastMessage.textContent = message;
+        dom.toast.classList.remove('opacity-0', '-translate-y-4');
+        dom.toast.classList.add('opacity-100', 'translate-y-0');
+
+        toastTimer = setTimeout(() => {
+          dom.toast.classList.add('opacity-0', '-translate-y-4');
+          dom.toast.classList.remove('opacity-100', 'translate-y-0');
+        }, 2200);
+      }
+
+      function applyTheme(mode) {
+        const isDark = mode === 'dark';
+        document.documentElement.classList.toggle('dark', isDark);
+        dom.themeColorMeta.setAttribute('content', isDark ? '#09090b' : '#fafafa');
+      }
+
+      function initTheme() {
+        const saved = loadStorage(STORAGE_KEYS.THEME, null);
+        if (saved === 'light' || saved === 'dark') {
+          applyTheme(saved);
+        } else {
+          const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          applyTheme(prefersDark ? 'dark' : 'light');
+        }
+      }
+
+      // =========================================================
+      // 7. 履歴・お気に入り管理
+      // =========================================================
+      function updateHistoryBadge() {
+        const history = loadStorage(STORAGE_KEYS.HISTORY, []);
+        const favs = loadStorage(STORAGE_KEYS.FAVORITES, []);
+        const total = history.length + favs.length;
+        if (total > 0) {
+          dom.historyBadge.textContent = total > 99 ? '99+' : String(total);
+          dom.historyBadge.classList.remove('hidden');
+        } else {
+          dom.historyBadge.classList.add('hidden');
+        }
+      }
+
+      function createRecord(promptText) {
+        return {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          ai: state.ai,
+          lang: state.lang,
+          prompt: promptText,
+          createdAt: new Date().toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          snapshot: {
+            ai: state.ai,
+            lang: state.lang,
+            subject: state.subject,
+            ratio: state.ratio,
+            characters: JSON.parse(JSON.stringify(state.characters)),
+            groupRelation: JSON.parse(JSON.stringify(state.groupRelation)),
+            scene: JSON.parse(JSON.stringify(state.scene)),
+            textInImage: state.textInImage,
+            negative: state.negative,
+            selected: JSON.parse(JSON.stringify(state.selected))
+          }
+        };
+      }
+
+      function addToHistory(promptText) {
+        let list = loadStorage(STORAGE_KEYS.HISTORY, []);
+        list = list.filter(item => item.prompt !== promptText);
+        list.unshift(createRecord(promptText));
+        if (list.length > 30) list = list.slice(0, 30);
+        saveStorage(STORAGE_KEYS.HISTORY, list);
+        updateHistoryBadge();
+      }
+
+      function addToFavorites(recordOrPrompt) {
+        let list = loadStorage(STORAGE_KEYS.FAVORITES, []);
+        const promptText = typeof recordOrPrompt === 'string' ? recordOrPrompt : recordOrPrompt.prompt;
+        if (list.some(item => item.prompt === promptText)) {
+          showToast('すでにお気に入りに保存されています', '⭐');
+          return;
+        }
+        const rec = typeof recordOrPrompt === 'string' ? createRecord(promptText) : { ...recordOrPrompt, id: Date.now().toString(36) };
+        list.unshift(rec);
+        if (list.length > 50) list = list.slice(0, 50);
+        saveStorage(STORAGE_KEYS.FAVORITES, list);
+        updateHistoryBadge();
+        showToast('お気に入りに保存しました！', '⭐');
+      }
+
+      function renderHistoryList() {
+        const isFavTab = state.historyTab === 'favorites';
+        const key = isFavTab ? STORAGE_KEYS.FAVORITES : STORAGE_KEYS.HISTORY;
+        const list = loadStorage(key, []);
+
+        dom.htabBtns.forEach(btn => {
+          const active = btn.dataset.htab === state.historyTab;
+          btn.className = 'htab-btn py-1.5 rounded-lg text-xs font-bold transition ' +
+            (active ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400');
+        });
+
+        if (list.length === 0) {
+          dom.historyList.innerHTML = `
+            <div class="py-12 text-center text-zinc-400 dark:text-zinc-500">
+              <p class="text-sm font-medium">${isFavTab ? 'お気に入りはまだありません' : 'コピー履歴はまだありません'}</p>
+              <p class="text-xs mt-1">${isFavTab ? '★ボタンから保存できます' : 'プロンプトをコピーすると自動で記録されます'}</p>
+            </div>
+          `;
+          return;
+        }
+
+        dom.historyList.innerHTML = '';
+        list.forEach(item => {
+          const aiCfg = AI_CONFIG[item.ai] || AI_CONFIG.gemini;
+          const card = document.createElement('div');
+          card.className = 'p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5';
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold text-white ${aiCfg.badgeBg}">${aiCfg.name}</span>
+                <span class="text-[11px] text-zinc-400">${escapeHtml(item.createdAt || '')}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                ${!isFavTab ? `<button type="button" data-fav-id="${item.id}" class="text-xs text-amber-500 hover:text-amber-400 px-2 py-1 rounded-lg active:scale-90 transition">★ 保存</button>` : ''}
+                <button type="button" data-delete-id="${item.id}" class="text-xs text-zinc-400 hover:text-red-500 px-2 py-1 rounded-lg active:scale-90 transition">削除</button>
+              </div>
+            </div>
+            <p class="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 line-clamp-3 font-mono whitespace-pre-wrap break-words"></p>
+            <div class="flex items-center gap-2 pt-0.5">
+              <button type="button" data-copy-id="${item.id}" class="flex-1 py-2 px-3 rounded-xl bg-zinc-200/80 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 text-xs font-semibold active:scale-95 transition">
+                コピー
+              </button>
+              <button type="button" data-restore-id="${item.id}" class="flex-1 py-2 px-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold active:scale-95 transition">
+                設定を復元
+              </button>
+            </div>
+          `;
+          card.querySelector('p').textContent = item.prompt;
+          dom.historyList.appendChild(card);
+        });
+      }
+
+      function openHistoryModal() {
+        renderHistoryList();
+        dom.historyModal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+          dom.historyBackdrop.classList.remove('opacity-0');
+          dom.historyPanel.classList.remove('translate-y-full');
+        });
+      }
+
+      function closeHistoryModal() {
+        dom.historyBackdrop.classList.add('opacity-0');
+        dom.historyPanel.classList.add('translate-y-full');
+        setTimeout(() => {
+          dom.historyModal.classList.add('hidden');
+        }, 280);
+      }
+
+      // =========================================================
+      // 7.5 共通カスタムラベル追加モーダル（人物・複数人・シーン）
+      // =========================================================
+      function openCustomLabelModal(groupKey, title) {
+        state.activeLabelModal = { groupKey, title };
+        const cfg = AI_CONFIG[state.ai];
+        dom.customLabelModalTitle.textContent = `「${title}」にラベルを追加`;
+        dom.btnSubmitCustomLabel.className = `flex-[1.6] py-3 px-4 rounded-2xl text-sm font-bold text-white active:scale-95 transition shadow-md ${cfg.submitBtn}`;
+        dom.customLabelForm.reset();
+        dom.customLabelModal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+          dom.customLabelBackdrop.classList.remove('opacity-0');
+          dom.customLabelPanel.classList.remove('translate-y-full');
+        });
+        setTimeout(() => dom.modalCustomJa.focus(), 180);
+      }
+
+      function closeCustomLabelModal() {
+        dom.customLabelBackdrop.classList.add('opacity-0');
+        dom.customLabelPanel.classList.add('translate-y-full');
+        setTimeout(() => {
+          dom.customLabelModal.classList.add('hidden');
+          state.activeLabelModal = null;
+        }, 260);
+      }
+
+      function deleteCustomLabel(groupKey, id) {
+        state.customLabels[groupKey] = (state.customLabels[groupKey] || []).filter(item => item.id !== id);
+        saveStorage(STORAGE_KEYS.CUSTOM_LABELS, state.customLabels);
+
+        if (['race', 'outfit', 'pose'].includes(groupKey)) {
+          state.characters.forEach(c => { if (c[groupKey] === id) c[groupKey] = ''; });
+          renderCharactersSection();
+        } else if (['styles', 'props'].includes(groupKey)) {
+          state.characters.forEach(c => { c[groupKey] = (c[groupKey] || []).filter(x => x !== id); });
+          renderCharactersSection();
+        } else if (['arrangement', 'interaction'].includes(groupKey)) {
+          if (state.groupRelation[groupKey] === id) state.groupRelation[groupKey] = '';
+          renderCharactersSection();
+        } else if (['background', 'time'].includes(groupKey)) {
+          if (state.scene[groupKey] === id) state.scene[groupKey] = '';
+          renderSceneSection();
+        } else if (groupKey === 'weathers') {
+          state.scene.weathers = (state.scene.weathers || []).filter(x => x !== id);
+          renderSceneSection();
+        }
+
+        updatePreview();
+        showToast('カスタムラベルを削除しました', '🗑️');
+      }
+
+      // =========================================================
+      // 8. イベントリスナー設定
+      // =========================================================
+
+      // AI切替
+      dom.aiTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          state.ai = tab.dataset.ai;
+          updateAIThemeUI();
+        });
+      });
+
+      // 言語切替
+      dom.langBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.lang = btn.dataset.lang;
+          updateLangUI();
+        });
+      });
+
+      // テーマ切替
+      dom.btnTheme.addEventListener('click', () => {
+        const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+        applyTheme(next);
+        saveStorage(STORAGE_KEYS.THEME, next);
+      });
+
+      // 安全チェックON/OFF
+      dom.btnSafetyToggle.addEventListener('click', () => {
+        state.safetyCheckEnabled = !state.safetyCheckEnabled;
+        saveStorage(STORAGE_KEYS.SAFETY_CHECK, state.safetyCheckEnabled);
+        updateSafetyToggleUI();
+        updatePreview();
+        showToast(state.safetyCheckEnabled ? '安全チェックをオンにしました' : '安全チェックをオフにしました', state.safetyCheckEnabled ? '🛡️' : 'ℹ️');
+      });
+
+      // 安全警告バナー開閉
+      dom.btnToggleSafetyBanner.addEventListener('click', () => {
+        state.safetyBannerOpen = !state.safetyBannerOpen;
+        dom.safetyBannerBody.classList.toggle('open', state.safetyBannerOpen);
+        dom.btnToggleSafetyBanner.setAttribute('aria-expanded', state.safetyBannerOpen ? 'true' : 'false');
+        dom.safetyBannerChevron.classList.toggle('rotate-180', state.safetyBannerOpen);
+      });
+
+      // 下部安全バッジクリックで警告バナーへスクロール
+      dom.footerSafetyBadge.addEventListener('click', () => {
+        if (!dom.safetyWarningSection.classList.contains('hidden')) {
+          state.safetyBannerOpen = true;
+          dom.safetyBannerBody.classList.add('open');
+          dom.safetyBannerChevron.classList.add('rotate-180');
+          dom.safetyWarningSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+
+      // 安全警告内のワンタップ言い換え＆タグ解除
+      dom.safetyFindingsList.addEventListener('click', (e) => {
+        // カテゴリータグ解除
+        const removeTagBtn = e.target.closest('[data-remove-tag-cat][data-remove-tag-id]');
+        if (removeTagBtn) {
+          const catId = removeTagBtn.dataset.removeTagCat;
+          const itemId = removeTagBtn.dataset.removeTagId;
+          state.selected[catId] = (state.selected[catId] || []).filter(id => id !== itemId);
+          renderSelectedSummary();
+          renderCategoryTabs();
+          renderActiveCategoryPanel();
+          updatePreview();
+          showToast('該当のタグを解除しました', '✅');
+          return;
+        }
+
+        // 人物設定チップ解除
+        const removeCharChipBtn = e.target.closest('[data-remove-char-idx][data-remove-char-field]');
+        if (removeCharChipBtn) {
+          const idx = Number(removeCharChipBtn.dataset.removeCharIdx);
+          const field = removeCharChipBtn.dataset.removeCharField;
+          const chipId = removeCharChipBtn.dataset.removeCharChipId;
+          const char = state.characters[idx];
+          if (char) {
+            if (field === 'styles' || field === 'props') {
+              char[field] = (char[field] || []).filter(id => id !== chipId);
+            } else {
+              char[field] = '';
+            }
+            renderCharactersSection();
+            updatePreview();
+            showToast('該当のラベルを解除しました', '✅');
+          }
+          return;
+        }
+
+        // 複数人・シーン設定チップ解除
+        const removeFieldChipBtn = e.target.closest('[data-remove-field-type][data-remove-field-name]');
+        if (removeFieldChipBtn) {
+          const type = removeFieldChipBtn.dataset.removeFieldType;
+          const field = removeFieldChipBtn.dataset.removeFieldName;
+          const chipId = removeFieldChipBtn.dataset.removeFieldChipId;
+          if (type === 'group_chip') {
+            state.groupRelation[field] = '';
+            renderCharactersSection();
+          } else if (type === 'scene_chip') {
+            if (field === 'weathers') {
+              state.scene.weathers = (state.scene.weathers || []).filter(id => id !== chipId);
+            } else {
+              state.scene[field] = '';
+            }
+            renderSceneSection();
+          }
+          updatePreview();
+          showToast('該当のラベルを解除しました', '✅');
+          return;
+        }
+
+        // テキスト入力のワンタップ言い換え
+        const repBtn = e.target.closest('[data-replace-source][data-replace-word]');
+        if (repBtn) {
+          const source = repBtn.dataset.replaceSource;
+          const word = repBtn.dataset.replaceWord;
+          const replaceWith = repBtn.dataset.replaceWith;
+          const re = new RegExp(escapeRegex(word), 'gi');
+
+          if (source === 'subject') {
+            state.subject = state.subject.replace(re, replaceWith);
+            dom.subjectInput.value = state.subject;
+          } else if (source === 'textInImage') {
+            state.textInImage = state.textInImage.replace(re, replaceWith);
+            dom.textInImage.value = state.textInImage;
+          } else if (source === 'char_text') {
+            const idx = Number(repBtn.dataset.replaceCharIdx);
+            const field = repBtn.dataset.replaceField;
+            if (state.characters[idx] && state.characters[idx][field]) {
+              state.characters[idx][field] = state.characters[idx][field].replace(re, replaceWith);
+              renderCharactersSection();
+            }
+          } else if (source === 'group_text') {
+            const field = repBtn.dataset.replaceField;
+            if (state.groupRelation[field]) {
+              state.groupRelation[field] = state.groupRelation[field].replace(re, replaceWith);
+              renderCharactersSection();
+            }
+          } else if (source === 'scene_text') {
+            const field = repBtn.dataset.replaceField;
+            if (state.scene[field]) {
+              state.scene[field] = state.scene[field].replace(re, replaceWith);
+              renderSceneSection();
+            }
+          }
+
+          updatePreview();
+          showToast('表現を言い換えました！', '✨');
+        }
+      });
+
+      // 被写体・画像内テキスト入力
+      dom.subjectInput.addEventListener('input', (e) => {
+        state.subject = e.target.value;
+        updatePreview();
+      });
+
+      dom.btnClearSubject.addEventListener('click', () => {
+        state.subject = '';
+        dom.subjectInput.value = '';
+        updatePreview();
+      });
+
+      dom.textInImage.addEventListener('input', (e) => {
+        state.textInImage = e.target.value;
+        updatePreview();
+      });
+
+      // アスペクト比選択
+      dom.ratioContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-ratio]');
+        if (!btn) return;
+        state.ratio = btn.dataset.ratio;
+        renderRatios();
+        updatePreview();
+      });
+
+      // 人物追加ボタン
+      dom.btnAddCharacterHeader.addEventListener('click', () => {
+        if (state.characters.length >= 3) return;
+        state.characters.push(createCharacter());
+        state.activeCharacterIndex = state.characters.length - 1;
+        renderCharactersSection();
+        updatePreview();
+      });
+
+      // 人物タブ切替・削除
+      dom.charTabsBar.addEventListener('click', (e) => {
+        const remBtn = e.target.closest('[data-remove-char]');
+        if (remBtn) {
+          const idx = Number(remBtn.dataset.removeChar);
+          state.characters.splice(idx, 1);
+          if (state.activeCharacterIndex >= state.characters.length) {
+            state.activeCharacterIndex = Math.max(0, state.characters.length - 1);
+          }
+          renderCharactersSection();
+          updatePreview();
+          return;
+        }
+        const selBtn = e.target.closest('[data-select-char]');
+        if (selBtn) {
+          state.activeCharacterIndex = Number(selBtn.dataset.selectChar);
+          renderCharactersSection();
+        }
+      });
+
+      // アクティブ人物フォーム内のチップ選択
+      dom.charActiveForm.addEventListener('click', (e) => {
+        const openAddBtn = e.target.closest('[data-open-add-label]');
+        if (openAddBtn) {
+          openCustomLabelModal(openAddBtn.dataset.openAddLabel, openAddBtn.dataset.openAddTitle);
+          return;
+        }
+        const delLabelBtn = e.target.closest('[data-del-label-group][data-del-label-id]');
+        if (delLabelBtn) {
+          e.stopPropagation();
+          deleteCustomLabel(delLabelBtn.dataset.delLabelGroup, delLabelBtn.dataset.delLabelId);
+          return;
+        }
+
+        const char = state.characters[state.activeCharacterIndex];
+        if (!char) return;
+
+        const gBtn = e.target.closest('[data-char-gender]');
+        if (gBtn) {
+          char.gender = gBtn.dataset.charGender;
+          renderCharactersSection();
+          updatePreview();
+          return;
+        }
+
+        const rBtn = e.target.closest('[data-char-race]');
+        if (rBtn) {
+          const val = rBtn.dataset.charRace;
+          char.race = char.race === val ? '' : val;
+          renderCharactersSection();
+          updatePreview();
+          return;
+        }
+
+        const sBtn = e.target.closest('[data-char-style]');
+        if (sBtn) {
+          const val = sBtn.dataset.charStyle;
+          char.styles = char.styles || [];
+          char.styles = char.styles.includes(val) ? char.styles.filter(x => x !== val) : [...char.styles, val];
+          renderCharactersSection();
+          updatePreview();
+          return;
+        }
+
+        const oBtn = e.target.closest('[data-char-outfit]');
+        if (oBtn) {
+          const val = oBtn.dataset.charOutfit;
+          char.outfit = char.outfit === val ? '' : val;
+          renderCharactersSection();
+          updatePreview();
+          return;
+        }
+
+        const pBtn = e.target.closest('[data-char-pose]');
+        if (pBtn) {
+          const val = pBtn.dataset.charPose;
+          char.pose = char.pose === val ? '' : val;
+          renderCharactersSection();
+          updatePreview();
+          return;
+        }
+
+        const prBtn = e.target.closest('[data-char-prop]');
+        if (prBtn) {
+          const val = prBtn.dataset.charProp;
+          char.props = char.props || [];
+          char.props = char.props.includes(val) ? char.props.filter(x => x !== val) : [...char.props, val];
+          renderCharactersSection();
+          updatePreview();
+          return;
+        }
+
+        const posBtn = e.target.closest('[data-char-pos]');
+        if (posBtn) {
+          char.position = posBtn.dataset.charPos;
+          renderCharactersSection();
+          updatePreview();
+        }
+      });
+
+      // アクティブ人物フォーム内のカスタムテキスト入力
+      dom.charActiveForm.addEventListener('input', (e) => {
+        const input = e.target.closest('[data-char-input]');
+        if (!input) return;
+        const char = state.characters[state.activeCharacterIndex];
+        if (!char) return;
+        char[input.dataset.charInput] = input.value;
+        updatePreview();
+      });
+
+      // 複数人パネル内のチップ選択・カスタム入力
+      dom.groupRelationPanel.addEventListener('click', (e) => {
+        const openAddBtn = e.target.closest('[data-open-add-label]');
+        if (openAddBtn) {
+          openCustomLabelModal(openAddBtn.dataset.openAddLabel, openAddBtn.dataset.openAddTitle);
+          return;
+        }
+        const delLabelBtn = e.target.closest('[data-del-label-group][data-del-label-id]');
+        if (delLabelBtn) {
+          e.stopPropagation();
+          deleteCustomLabel(delLabelBtn.dataset.delLabelGroup, delLabelBtn.dataset.delLabelId);
+          return;
+        }
+
+        const arrBtn = e.target.closest('[data-group-arr]');
+        if (arrBtn) {
+          const val = arrBtn.dataset.groupArr;
+          state.groupRelation.arrangement = state.groupRelation.arrangement === val ? '' : val;
+          renderCharactersSection();
+          updatePreview();
+          return;
+        }
+
+        const intBtn = e.target.closest('[data-group-int]');
+        if (intBtn) {
+          const val = intBtn.dataset.groupInt;
+          state.groupRelation.interaction = state.groupRelation.interaction === val ? '' : val;
+          renderCharactersSection();
+          updatePreview();
+        }
+      });
+
+      dom.groupRelationPanel.addEventListener('input', (e) => {
+        const input = e.target.closest('[data-group-input]');
+        if (!input) return;
+        state.groupRelation[input.dataset.groupInput] = input.value;
+        updatePreview();
+      });
+
+      // シーン設定開閉＆チップ選択＆入力
+      dom.btnToggleScene.addEventListener('click', () => {
+        state.scene.open = !state.scene.open;
+        dom.sceneBody.classList.toggle('open', state.scene.open);
+        dom.btnToggleScene.setAttribute('aria-expanded', state.scene.open ? 'true' : 'false');
+        dom.sceneChevron.classList.toggle('rotate-180', state.scene.open);
+      });
+
+      dom.sceneFormContainer.addEventListener('click', (e) => {
+        const openAddBtn = e.target.closest('[data-open-add-label]');
+        if (openAddBtn) {
+          openCustomLabelModal(openAddBtn.dataset.openAddLabel, openAddBtn.dataset.openAddTitle);
+          return;
+        }
+        const delLabelBtn = e.target.closest('[data-del-label-group][data-del-label-id]');
+        if (delLabelBtn) {
+          e.stopPropagation();
+          deleteCustomLabel(delLabelBtn.dataset.delLabelGroup, delLabelBtn.dataset.delLabelId);
+          return;
+        }
+
+        if (e.target.closest('[data-scene-clear]')) {
+          state.scene.background = '';
+          state.scene.backgroundCustom = '';
+          state.scene.time = '';
+          state.scene.timeCustom = '';
+          state.scene.weathers = [];
+          state.scene.weatherCustom = '';
+          renderSceneSection();
+          updatePreview();
+          return;
+        }
+
+        const bgBtn = e.target.closest('[data-scene-bg]');
+        if (bgBtn) {
+          const val = bgBtn.dataset.sceneBg;
+          state.scene.background = state.scene.background === val ? '' : val;
+          renderSceneSection();
+          updatePreview();
+          return;
+        }
+
+        const timeBtn = e.target.closest('[data-scene-time]');
+        if (timeBtn) {
+          const val = timeBtn.dataset.sceneTime;
+          state.scene.time = state.scene.time === val ? '' : val;
+          renderSceneSection();
+          updatePreview();
+          return;
+        }
+
+        const wtBtn = e.target.closest('[data-scene-weather]');
+        if (wtBtn) {
+          const val = wtBtn.dataset.sceneWeather;
+          state.scene.weathers = state.scene.weathers || [];
+          state.scene.weathers = state.scene.weathers.includes(val)
+            ? state.scene.weathers.filter(x => x !== val)
+            : [...state.scene.weathers, val];
+          renderSceneSection();
+          updatePreview();
+        }
+      });
+
+      dom.sceneFormContainer.addEventListener('input', (e) => {
+        const input = e.target.closest('[data-scene-input]');
+        if (!input) return;
+        state.scene[input.dataset.sceneInput] = input.value;
+        updateSceneBadgesOnly();
+        updatePreview();
+      });
+
+      // 選択中サマリーの個別解除＆すべて解除
+      dom.selectedSummaryChips.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-unselect-cat][data-unselect-id]');
+        if (!btn) return;
+        const catId = btn.dataset.unselectCat;
+        const id = btn.dataset.unselectId;
+        state.selected[catId] = (state.selected[catId] || []).filter(x => x !== id);
+        renderSelectedSummary();
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+        updatePreview();
+      });
+
+      dom.btnClearAllTags.addEventListener('click', () => {
+        state.selected = {};
+        renderSelectedSummary();
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+        updatePreview();
+      });
+
+      // カテゴリータブ切替
+      dom.categoryTabs.addEventListener('click', (e) => {
+        const tab = e.target.closest('[data-tab-cat]');
+        if (!tab) return;
+        state.activeCategory = tab.dataset.tabCat;
+        setAddWordFormOpen(false);
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+      });
+
+      // アクティブカテゴリーの選択解除
+      dom.btnClearActiveCat.addEventListener('click', () => {
+        state.selected[state.activeCategory] = [];
+        renderSelectedSummary();
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+        updatePreview();
+      });
+
+      // カテゴリー内チップ選択＆カスタムワード削除
+      dom.activeCatChips.addEventListener('click', (e) => {
+        const delBtn = e.target.closest('[data-del-custom-cat][data-del-custom-id]');
+        if (delBtn) {
+          e.stopPropagation();
+          const catId = delBtn.dataset.delCustomCat;
+          const id = delBtn.dataset.delCustomId;
+          state.customWords[catId] = (state.customWords[catId] || []).filter(item => item.id !== id);
+          state.selected[catId] = (state.selected[catId] || []).filter(x => x !== id);
+          saveStorage(STORAGE_KEYS.CUSTOM_WORDS, state.customWords);
+          renderSelectedSummary();
+          renderCategoryTabs();
+          renderActiveCategoryPanel();
+          updatePreview();
+          showToast('カスタムワードを削除しました', '🗑️');
+          return;
+        }
+
+        const chipBtn = e.target.closest('[data-chip-cat][data-chip-id]');
+        if (!chipBtn) return;
+        const catId = chipBtn.dataset.chipCat;
+        const id = chipBtn.dataset.chipId;
+        const current = state.selected[catId] || [];
+        state.selected[catId] = current.includes(id) ? current.filter(x => x !== id) : [...current, id];
+        renderSelectedSummary();
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+        updatePreview();
+      });
+
+      // カスタムワード追加フォーム開閉＆送信
+      dom.btnToggleAddWord.addEventListener('click', () => {
+        setAddWordFormOpen(!state.addFormOpen);
+      });
+
+      dom.btnCancelAddWord.addEventListener('click', () => {
+        dom.addWordForm.reset();
+        setAddWordFormOpen(false);
+      });
+
+      dom.addWordForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const catId = state.activeCategory;
+        const label = dom.customWordJa.value.trim();
+        const en = dom.customWordEn.value.trim();
+        if (!label) return;
+
+        const existing = getCategoryItems(catId);
+        if (existing.some(item => item.label === label)) {
+          showToast('同じ名前のワードがすでに存在します', '⚠️');
+          return;
+        }
+
+        const newItem = {
+          id: 'cw_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+          label,
+          en: en || label,
+          isCustom: true
+        };
+        if (!state.customWords[catId]) state.customWords[catId] = [];
+        state.customWords[catId].push(newItem);
+        saveStorage(STORAGE_KEYS.CUSTOM_WORDS, state.customWords);
+
+        state.selected[catId] = [...(state.selected[catId] || []), newItem.id];
+        dom.addWordForm.reset();
+        setAddWordFormOpen(false);
+        renderSelectedSummary();
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+        updatePreview();
+        showToast(`「${label}」を追加して選択しました！`, '✨');
+      });
+
+      // 詳細オプション（ネガティブ指示）
+      dom.btnAccordionOptions.addEventListener('click', () => {
+        state.optionsOpen = !state.optionsOpen;
+        dom.accordionOptionsBody.classList.toggle('open', state.optionsOpen);
+        dom.btnAccordionOptions.setAttribute('aria-expanded', state.optionsOpen ? 'true' : 'false');
+        dom.accordionChevron.classList.toggle('rotate-180', state.optionsOpen);
+      });
+
+      dom.negativeInput.addEventListener('input', (e) => {
+        state.negative = e.target.value;
+        updatePreview();
+      });
+
+      document.querySelectorAll('.neg-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.dataset.neg;
+          const cur = state.negative.trim();
+          if (!cur.includes(val)) {
+            state.negative = cur ? `${cur}、${val}` : val;
+            dom.negativeInput.value = state.negative;
+            updatePreview();
+          }
+        });
+      });
+
+      // プレビュー全文展開トグル
+      function togglePreviewExpand() {
+        state.previewExpanded = !state.previewExpanded;
+        dom.previewBox.classList.toggle('max-h-20', !state.previewExpanded);
+        dom.previewBox.classList.toggle('max-h-64', state.previewExpanded);
+        dom.btnExpandPreview.textContent = state.previewExpanded ? '折りたたむ' : '全文表示';
+      }
+      dom.btnExpandPreview.addEventListener('click', togglePreviewExpand);
+      dom.btnTogglePreview.addEventListener('click', togglePreviewExpand);
+      dom.previewBox.addEventListener('click', togglePreviewExpand);
+
+      // コピー＆お気に入り保存
+      dom.btnCopy.addEventListener('click', () => {
+        const prompt = buildPrompt();
+        if (!prompt) {
+          showToast('先に被写体やタグを選んでください', '💡');
+          return;
+        }
+        copyTextToClipboard(prompt)
+          .then(() => {
+            addToHistory(prompt);
+            showToast(`${AI_CONFIG[state.ai].name}用プロンプトをコピーしました！`, '✅');
+          })
+          .catch(() => {
+            showToast('コピーに失敗しました。手動で選択してください', '⚠️');
+          });
+      });
+
+      dom.btnSaveFav.addEventListener('click', () => {
+        const prompt = buildPrompt();
+        if (!prompt) {
+          showToast('保存するプロンプトがありません', '💡');
+          return;
+        }
+        addToFavorites(prompt);
+      });
+
+      // ランダム生成
+      dom.btnRandom.addEventListener('click', () => {
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        state.subject = pick(RANDOM_SUBJECTS);
+        dom.subjectInput.value = state.subject;
+        state.ratio = pick(ASPECT_RATIOS.slice(1)).id;
+        state.selected = {};
+        CATEGORIES.forEach(cat => {
+          const items = getCategoryItems(cat.id);
+          if (items.length) state.selected[cat.id] = [pick(items).id];
+        });
+        renderRatios();
+        renderSelectedSummary();
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+        updatePreview();
+        showToast('ランダムに組み合わせました！', '🎲');
+      });
+
+      // 全リセット
+      dom.btnReset.addEventListener('click', () => {
+        state.subject = '';
+        state.textInImage = '';
+        state.ratio = '';
+        state.negative = '';
+        state.selected = {};
+        state.characters = [];
+        state.activeCharacterIndex = 0;
+        state.groupRelation = { arrangement: '', arrangementCustom: '', interaction: '', interactionCustom: '' };
+        state.scene = { open: state.scene.open, background: '', backgroundCustom: '', time: '', timeCustom: '', weathers: [], weatherCustom: '' };
+
+        dom.subjectInput.value = '';
+        dom.textInImage.value = '';
+        dom.negativeInput.value = '';
+
+        renderRatios();
+        renderCharactersSection();
+        renderSceneSection();
+        renderSelectedSummary();
+        renderCategoryTabs();
+        renderActiveCategoryPanel();
+        updatePreview();
+        showToast('入力と選択をすべてリセットしました', '🧹');
+      });
+
+      // 履歴モーダル開閉＆操作
+      dom.btnHistory.addEventListener('click', openHistoryModal);
+      dom.btnCloseHistory.addEventListener('click', closeHistoryModal);
+      dom.historyBackdrop.addEventListener('click', closeHistoryModal);
+
+      dom.htabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.historyTab = btn.dataset.htab;
+          renderHistoryList();
+        });
+      });
+
+      dom.historyList.addEventListener('click', (e) => {
+        const isFavTab = state.historyTab === 'favorites';
+        const key = isFavTab ? STORAGE_KEYS.FAVORITES : STORAGE_KEYS.HISTORY;
+        let list = loadStorage(key, []);
+
+        const copyBtn = e.target.closest('[data-copy-id]');
+        if (copyBtn) {
+          const item = list.find(x => x.id === copyBtn.dataset.copyId);
+          if (item) {
+            copyTextToClipboard(item.prompt).then(() => showToast('コピーしました！', '✅'));
+          }
+          return;
+        }
+
+        const favBtn = e.target.closest('[data-fav-id]');
+        if (favBtn) {
+          const item = list.find(x => x.id === favBtn.dataset.favId);
+          if (item) addToFavorites(item);
+          return;
+        }
+
+        const delBtn = e.target.closest('[data-delete-id]');
+        if (delBtn) {
+          list = list.filter(x => x.id !== delBtn.dataset.deleteId);
+          saveStorage(key, list);
+          updateHistoryBadge();
+          renderHistoryList();
+          showToast('削除しました', '🗑️');
+          return;
+        }
+
+        const resBtn = e.target.closest('[data-restore-id]');
+        if (resBtn) {
+          const item = list.find(x => x.id === resBtn.dataset.restoreId);
+          if (item && item.snapshot) {
+            const sn = item.snapshot;
+            state.ai = sn.ai || 'gemini';
+            state.lang = sn.lang || 'en';
+            state.subject = sn.subject || '';
+            state.ratio = sn.ratio || '';
+            state.textInImage = sn.textInImage || '';
+            state.negative = sn.negative || '';
+            state.selected = JSON.parse(JSON.stringify(sn.selected || {}));
+            state.characters = JSON.parse(JSON.stringify(sn.characters || []));
+            state.activeCharacterIndex = 0;
+            state.groupRelation = JSON.parse(JSON.stringify(sn.groupRelation || { arrangement: '', arrangementCustom: '', interaction: '', interactionCustom: '' }));
+            state.scene = Object.assign({ open: false, background: '', backgroundCustom: '', time: '', timeCustom: '', weathers: [], weatherCustom: '' }, sn.scene || {});
+
+            dom.subjectInput.value = state.subject;
+            dom.textInImage.value = state.textInImage;
+            dom.negativeInput.value = state.negative;
+
+            updateAIThemeUI();
+            updateLangUI();
+            closeHistoryModal();
+            showToast('当時の設定を復元しました！', '♻️');
+          }
+        }
+      });
+
+      // 共通カスタムラベル追加モーダル開閉＆送信
+      dom.btnCloseCustomLabel.addEventListener('click', closeCustomLabelModal);
+      dom.btnCancelCustomLabel.addEventListener('click', closeCustomLabelModal);
+      dom.customLabelBackdrop.addEventListener('click', closeCustomLabelModal);
+
+      dom.customLabelForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!state.activeLabelModal) return;
+        const { groupKey } = state.activeLabelModal;
+        const label = dom.modalCustomJa.value.trim();
+        const en = dom.modalCustomEn.value.trim();
+
+        if (!label) {
+          showToast('表示名を入力してください', '💡');
+          dom.modalCustomJa.focus();
+          return;
+        }
+
+        const existing = getFieldItems(groupKey);
+        if (existing.some(item => item.label === label)) {
+          showToast('同じ名前のラベルがすでに存在します', '⚠️');
+          return;
+        }
+
+        const newItem = {
+          id: 'cl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+          label,
+          en: en || label,
+          isCustom: true
+        };
+
+        if (!state.customLabels[groupKey]) state.customLabels[groupKey] = [];
+        state.customLabels[groupKey].push(newItem);
+        saveStorage(STORAGE_KEYS.CUSTOM_LABELS, state.customLabels);
+
+        const activeChar = state.characters[state.activeCharacterIndex];
+        if (['race', 'outfit', 'pose'].includes(groupKey) && activeChar) {
+          activeChar[groupKey] = newItem.id;
+          renderCharactersSection();
+        } else if (['styles', 'props'].includes(groupKey) && activeChar) {
+          activeChar[groupKey] = [...(activeChar[groupKey] || []), newItem.id];
+          renderCharactersSection();
+        } else if (['arrangement', 'interaction'].includes(groupKey)) {
+          state.groupRelation[groupKey] = newItem.id;
+          renderCharactersSection();
+        } else if (['background', 'time'].includes(groupKey)) {
+          state.scene[groupKey] = newItem.id;
+          renderSceneSection();
+        } else if (groupKey === 'weathers') {
+          state.scene.weathers = [...(state.scene.weathers || []), newItem.id];
+          renderSceneSection();
+        }
+
+        closeCustomLabelModal();
+        updatePreview();
+        showToast(`「${label}」を追加して選択しました！`, '✨');
+      });
+
+      // =========================================================
+      // 9. 初期化
+      // =========================================================
+      state.customWords = loadStorage(STORAGE_KEYS.CUSTOM_WORDS, {});
+      state.customLabels = loadStorage(STORAGE_KEYS.CUSTOM_LABELS, {});
+      state.safetyCheckEnabled = loadStorage(STORAGE_KEYS.SAFETY_CHECK, true);
+      initTheme();
+      updateSafetyToggleUI();
+      updateAIThemeUI();
+      updateLangUI();
+    })();
+  </script>
+</body>
+</html>
